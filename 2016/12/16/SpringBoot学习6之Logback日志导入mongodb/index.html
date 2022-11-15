@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/uploads/favicon.ico?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/favicon.ico?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/favicon.ico?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/uploads/favicon.ico?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="SpringBoot,Logback,mongodb," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="SpringBoot学习6之Logback日志导入mongodb正如前文所说，springboot自带logback作为其日志新系统，但是在实际工作中，我们常常需要对日志进行管理或分析，如果只是单纯的将日志导入文本文件，则在查询时操作过于繁琐，如果将其导入mysql等关系型数据库进行存储，又太影响系统性能，同时由于Mysql其结构化的信息存储结构，导致在存储时不够灵活。因此，本文在此考虑将spri">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SpringBoot学习6之Logback日志导入mongodb">
+<meta property="og:url" content="https://darylliu.github.io/2016/12/16/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/index.html">
+<meta property="og:site_name" content="Daryl&#39;s Blog">
+<meta property="og:description" content="SpringBoot学习6之Logback日志导入mongodb正如前文所说，springboot自带logback作为其日志新系统，但是在实际工作中，我们常常需要对日志进行管理或分析，如果只是单纯的将日志导入文本文件，则在查询时操作过于繁琐，如果将其导入mysql等关系型数据库进行存储，又太影响系统性能，同时由于Mysql其结构化的信息存储结构，导致在存储时不够灵活。因此，本文在此考虑将spri">
+<meta property="og:locale">
+<meta property="og:image" content="https://darylliu.github.io/img/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/springboot1.png">
+<meta property="article:published_time" content="2016-12-16T06:27:17.000Z">
+<meta property="article:modified_time" content="2022-11-15T15:23:36.299Z">
+<meta property="article:author" content="Daryl">
+<meta property="article:tag" content="SpringBoot">
+<meta property="article:tag" content="Logback">
+<meta property="article:tag" content="mongodb">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://darylliu.github.io/img/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/springboot1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://darylliu.github.io/2016/12/16/SpringBoot学习6之Logback日志导入mongodb/"/>
+
+
+
+
+
+  <title>SpringBoot学习6之Logback日志导入mongodb | Daryl's Blog</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Daryl's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <h1 class="site-subtitle" itemprop="description">学习笔记</h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/%20" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
+            
+            关于
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://darylliu.github.io/2016/12/16/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/uploads/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Daryl's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h2 class="post-title" itemprop="name headline">SpringBoot学习6之Logback日志导入mongodb</h2>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2016-12-16T14:27:17+08:00">
+                2016-12-16
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E4%B8%93%E9%A2%98/" itemprop="url" rel="index">
+                    <span itemprop="name">专题</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="SpringBoot学习6之Logback日志导入mongodb"><a href="#SpringBoot学习6之Logback日志导入mongodb" class="headerlink" title="SpringBoot学习6之Logback日志导入mongodb"></a>SpringBoot学习6之Logback日志导入mongodb</h1><p>正如前文所说，springboot自带logback作为其日志新系统，但是在实际工作中，我们常常需要对日志进行管理或分析，如果只是单纯的将日志导入文本文件，则在查询时操作过于繁琐，如果将其导入mysql等关系型数据库进行存储，又太影响系统性能，同时由于Mysql其结构化的信息存储结构，导致在存储时不够灵活。因此，本文在此考虑将springboot系统中产出的日志(logback) 存入mongodb中。</p>
+<span id="more"></span>
+
+<h2 id="实现步骤"><a href="#实现步骤" class="headerlink" title="实现步骤"></a>实现步骤</h2><h4 id="1-添加依赖"><a href="#1-添加依赖" class="headerlink" title="1. 添加依赖"></a>1. 添加依赖</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>ch.qos.logback<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>logback-core<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.9.28<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>ch.qos.logback<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>logback-classic<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.9.28<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongo-java-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.4.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-在项目资源文件下src-x2F-main-x2F-resources下添加logback-xml"><a href="#2-在项目资源文件下src-x2F-main-x2F-resources下添加logback-xml" class="headerlink" title="2. 在项目资源文件下src&#x2F;main&#x2F;resources下添加logback.xml"></a>2. 在项目资源文件下src&#x2F;main&#x2F;resources下添加logback.xml</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version=<span class="string">&quot;1.0&quot;</span> encoding=<span class="string">&quot;UTF-8&quot;</span>?&gt;</span></span><br><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">xml</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">appender</span> <span class="attr">name</span>=<span class="string">&quot;STDOUT&quot;</span> <span class="attr">class</span>=<span class="string">&quot;ch.qos.logback.core.ConsoleAppender&quot;</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">encoder</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">charset</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">charset</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">pattern</span>&gt;</span>%d [%thread] %-5level %logger&#123;68&#125; %line - logId[[%X&#123;client&#125;][%X&#123;request_id&#125;]] - %msg%n<span class="tag">&lt;/<span class="name">pattern</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">encoder</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">appender</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="tag">&lt;<span class="name">appender</span> <span class="attr">name</span>=<span class="string">&quot;MONGODB&quot;</span> <span class="attr">class</span>=<span class="string">&quot;SpringBoot.SpringBoot.log.MongoDBAppender&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">appender</span>&gt;</span></span><br><span class="line"></span><br><span class="line">     <span class="tag">&lt;<span class="name">root</span> <span class="attr">level</span>=<span class="string">&quot;INFO&quot;</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">appender-ref</span> <span class="attr">ref</span>=<span class="string">&quot;STDOUT&quot;</span> /&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">appender-ref</span> <span class="attr">ref</span>=<span class="string">&quot;MONGODB&quot;</span> /&gt;</span></span><br><span class="line">     <span class="tag">&lt;/<span class="name">root</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>上文中分别配置了mongodb的appender, 并起名为MONGODB，并启用</p>
+<h4 id="3-在项目Springboot-Springboot包下创建类MongoDBAppender"><a href="#3-在项目Springboot-Springboot包下创建类MongoDBAppender" class="headerlink" title="3. 在项目Springboot.Springboot包下创建类MongoDBAppender"></a>3. 在项目Springboot.Springboot包下创建类MongoDBAppender</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MongoDBAppender</span> <span class="keyword">extends</span> <span class="title class_">UnsynchronizedAppenderBase</span>&lt;LoggingEvent&gt; &#123;</span><br><span class="line">    <span class="keyword">private</span> MongoClient  mongo;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">dbHost</span> <span class="operator">=</span> <span class="string">&quot;localhost&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> <span class="variable">dbPort</span> <span class="operator">=</span> <span class="number">27017</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">dbName</span> <span class="operator">=</span> <span class="string">&quot;logging&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">colName</span> <span class="operator">=</span> <span class="string">&quot;logs&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> MongoCollection&lt;Document&gt; _collection;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            mongo = <span class="keyword">new</span> <span class="title class_">MongoClient</span> (dbHost, dbPort);</span><br><span class="line">            <span class="type">MongoDatabase</span>  <span class="variable">db</span> <span class="operator">=</span> mongo.getDatabase(dbName);</span><br><span class="line">            _collection = db.getCollection(colName);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            addStatus(<span class="keyword">new</span> <span class="title class_">ErrorStatus</span>(<span class="string">&quot;Failed to initialize MondoDB&quot;</span>, <span class="built_in">this</span>, e));</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">super</span>.start();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbHost</span><span class="params">(String dbHost)</span> &#123;</span><br><span class="line">        dbHost = <span class="built_in">this</span>.dbHost;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbName</span><span class="params">(String dbName)</span> &#123;</span><br><span class="line">        dbName = <span class="built_in">this</span>.dbName;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbPort</span><span class="params">(<span class="type">int</span> dbPort)</span> &#123;</span><br><span class="line">        dbPort = <span class="built_in">this</span>.dbPort;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">stop</span><span class="params">()</span> &#123;</span><br><span class="line">        mongo.close();</span><br><span class="line">        <span class="built_in">super</span>.stop();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">append</span><span class="params">(LoggingEvent e)</span> &#123;</span><br><span class="line">        <span class="type">Document</span> <span class="variable">document</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Document</span>().</span><br><span class="line">                append(<span class="string">&quot;ts&quot;</span>, <span class="keyword">new</span> <span class="title class_">Date</span>(e.getTimeStamp())).</span><br><span class="line">                append(<span class="string">&quot;msg&quot;</span>, e.getFormattedMessage()).</span><br><span class="line">                append(<span class="string">&quot;level&quot;</span>, e.getLevel().toString()).</span><br><span class="line">                append(<span class="string">&quot;logger&quot;</span>, e.getLoggerName()).</span><br><span class="line">                append(<span class="string">&quot;thread&quot;</span>, e.getThreadName());</span><br><span class="line">        <span class="keyword">if</span>(e.hasCallerData()) &#123;</span><br><span class="line">            <span class="type">StackTraceElement</span> <span class="variable">st</span> <span class="operator">=</span> e.getCallerData()[<span class="number">0</span>];</span><br><span class="line">            <span class="type">String</span> <span class="variable">callerData</span> <span class="operator">=</span> String.format(<span class="string">&quot;%s.%s:%d&quot;</span>, st.getClassName(), st.getMethodName(), st.getLineNumber());</span><br><span class="line">            document.append(<span class="string">&quot;caller&quot;</span>, callerData);</span><br><span class="line">        &#125;</span><br><span class="line">        _collection.insertOne(document);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-启动Mongodb服务器，运行项目"><a href="#4-启动Mongodb服务器，运行项目" class="headerlink" title="4. 启动Mongodb服务器，运行项目"></a>4. 启动Mongodb服务器，运行项目</h4><p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/springboot1.png"></p>
+<p>访问数据库发现，已经成功将日志插入</p>
+<h2 id="有待解决问题"><a href="#有待解决问题" class="headerlink" title="有待解决问题"></a>有待解决问题</h2><ol>
+<li>系统启动速度巨慢无比，有待解决</li>
+<li>有关数据库配置的问题，可以使用springboot的文件配置标签进行配置，将相关信息统一放在application.yml文件中，这样避免将数据库配置信息直接写在代码中，降低代码耦合性（具体详情请查阅<a href="https://darylliu.github.io/2016/10/22/SpringBoot%E5%AD%A6%E4%B9%A02%E4%B9%8B%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6/#more">SpringBoot学习2之配置文件</a>）</li>
+</ol>
+<h2 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h2><p>为了解决以上出现的两个问题，本人通过调研一些资料发现了解决办法，但是并没有弄清具体问题出现的原因。</p>
+<h3 id="问题1：启动速度慢"><a href="#问题1：启动速度慢" class="headerlink" title="问题1：启动速度慢"></a>问题1：启动速度慢</h3><p>因为之前调用Mongodb是自己添加的java驱动，实际上springboot有自己内置的mongodb接口，可以直接使用， 我们使用这套方法，执行效率几乎不受任何影响</p>
+<h4 id="1-替换依赖，将之前的依赖"><a href="#1-替换依赖，将之前的依赖" class="headerlink" title="1.	替换依赖，将之前的依赖"></a>1.	替换依赖，将之前的依赖</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongo-java-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.4.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>替换成</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-data-mongodb<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-添加实体类"><a href="#2-添加实体类" class="headerlink" title="2.	添加实体类"></a>2.	添加实体类</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyLog</span> &#123;</span><br><span class="line">    <span class="meta">@Id</span></span><br><span class="line">    <span class="keyword">private</span> String id;</span><br><span class="line">    <span class="keyword">private</span> Date ts;</span><br><span class="line">    <span class="keyword">private</span> String level;</span><br><span class="line">    <span class="keyword">private</span> String msg;</span><br><span class="line">    <span class="keyword">private</span> String thread;</span><br><span class="line">    </span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getId</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> id;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setId</span><span class="params">(String id)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.id = id;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> Date <span class="title function_">getTs</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> ts;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setTs</span><span class="params">(Date date)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.ts = date;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getLevel</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> level;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setLevel</span><span class="params">(String level)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.level = level;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getMsg</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> msg;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setMsg</span><span class="params">(String msg)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.msg = msg;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getThread</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> thread;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setThread</span><span class="params">(String thread)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.thread = thread;</span><br><span class="line">	&#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>@Id  该标签对应Mongodb中的_id</p>
+<h4 id="3-添加数据访问接口"><a href="#3-添加数据访问接口" class="headerlink" title="3. 添加数据访问接口"></a>3. 添加数据访问接口</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">LogRepository</span> <span class="keyword">extends</span> <span class="title class_">MongoRepository</span>&lt;MyLog, String&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-修改appender类"><a href="#4-修改appender类" class="headerlink" title="4.	修改appender类"></a>4.	修改appender类</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MongoDBAppender</span> <span class="keyword">extends</span> <span class="title class_">UnsynchronizedAppenderBase</span>&lt;LoggingEvent&gt;  <span class="keyword">implements</span> <span class="title class_">ApplicationContextAware</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> LogRepository logRepository;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">super</span>.start();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">stop</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">super</span>.stop();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">append</span><span class="params">(LoggingEvent e)</span> &#123;</span><br><span class="line"></span><br><span class="line">        <span class="type">MyLog</span> <span class="variable">myLog</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MyLog</span>();</span><br><span class="line">        myLog.setLevel(e.getLevel().toString());</span><br><span class="line">        myLog.setMsg(e.getFormattedMessage());</span><br><span class="line">        myLog.setThread(e.getThreadName());</span><br><span class="line">        myLog.setTs(<span class="keyword">new</span> <span class="title class_">Date</span>(e.getTimeStamp()));</span><br><span class="line">        logRepository.save(myLog);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setApplicationContext</span><span class="params">(ApplicationContext applicationContext)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (applicationContext.getAutowireCapableBeanFactory().getBean(LogRepository.class) != <span class="literal">null</span>) &#123;</span><br><span class="line">        	logRepository = (LogRepository) applicationContext.getAutowireCapableBeanFactory().getBean(LogRepository.class);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有的人看到这里可能疑惑了，为什么不直接使用@Autowired注解，直接将LogRepository注入到代码里，而非要使用实现ApplicationContextAware 接口的方法，重写public void setApplicationContext(ApplicationContext applicationContext) 手动注入呢?</p>
+<p>这里本人遇到了一个坑，刚开始确实采用了@Autowired方法尝试注入，后来发现在日志读取过程中，logRepository一直是null,后来经过调查发现，**<font color = red>logback 的appender 在spring加载类之前创建，所以也即是说，在spring加载类之前该类已经投入使用，所以没有办法注入logRepository</font>**</p>
+<p>为了解决这个问题，只能“手动”注入了，将其声明为静态变量，并采用懒加载的方式进行加载。</p>
+<h3 id="问题2：数据库信息配置"><a href="#问题2：数据库信息配置" class="headerlink" title="问题2：数据库信息配置"></a>问题2：数据库信息配置</h3><p>在application.yml中配置如下即可</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">spring:</span><br><span class="line">  data:</span><br><span class="line">    mongodb:</span><br><span class="line">      uri: mongodb://localhost:27017/logging</span><br></pre></td></tr></table></figure>
+
+<p>这里也可以使用带密码形式的设置</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">spring:</span><br><span class="line">  data:</span><br><span class="line">    mongodb:</span><br><span class="line">      uri: mongodb://username:password@localhost:27017/logging</span><br></pre></td></tr></table></figure>
+
+<p>但是由于Mongdb进入3.0版本后更改了其默认认证方式，而springboot依然停留在老版本，所以虽然账号密码都输入正确，但是依然无法登陆成功。<br>在这里我们可以修改mongodb的默认认证方式<br>解决办法参考了解<br><a target="_blank" rel="noopener" href="http://blog.csdn.net/wlzx120/article/details/52311777">http://blog.csdn.net/wlzx120/article/details/52311777</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/SpringBoot/" rel="tag"># SpringBoot</a>
+          
+            <a href="/tags/Logback/" rel="tag"># Logback</a>
+          
+            <a href="/tags/mongodb/" rel="tag"># mongodb</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/12/01/SpringBoot%E5%AD%A6%E4%B9%A05%E4%B9%8B%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B3%A8%E8%A7%A3/" rel="next" title="SpringBoot学习5之自定义注解">
+                <i class="fa fa-chevron-left"></i> SpringBoot学习5之自定义注解
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/04/08/%E5%90%8E%E5%8F%B0%E7%A0%94%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%80%BB%E7%BB%93/" rel="prev" title="后台研发知识点总结">
+                后台研发知识点总结 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/uploads/avatar.jpg"
+                alt="" />
+            
+              <p class="site-author-name" itemprop="name"></p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%20%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">26</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">21</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb"><span class="nav-number">1.</span> <span class="nav-text">SpringBoot学习6之Logback日志导入mongodb</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.1.</span> <span class="nav-text">实现步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%B7%BB%E5%8A%A0%E4%BE%9D%E8%B5%96"><span class="nav-number">1.1.0.1.</span> <span class="nav-text">1. 添加依赖</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E5%9C%A8%E9%A1%B9%E7%9B%AE%E8%B5%84%E6%BA%90%E6%96%87%E4%BB%B6%E4%B8%8Bsrc-x2F-main-x2F-resources%E4%B8%8B%E6%B7%BB%E5%8A%A0logback-xml"><span class="nav-number">1.1.0.2.</span> <span class="nav-text">2. 在项目资源文件下src&#x2F;main&#x2F;resources下添加logback.xml</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E5%9C%A8%E9%A1%B9%E7%9B%AESpringboot-Springboot%E5%8C%85%E4%B8%8B%E5%88%9B%E5%BB%BA%E7%B1%BBMongoDBAppender"><span class="nav-number">1.1.0.3.</span> <span class="nav-text">3. 在项目Springboot.Springboot包下创建类MongoDBAppender</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E5%90%AF%E5%8A%A8Mongodb%E6%9C%8D%E5%8A%A1%E5%99%A8%EF%BC%8C%E8%BF%90%E8%A1%8C%E9%A1%B9%E7%9B%AE"><span class="nav-number">1.1.0.4.</span> <span class="nav-text">4. 启动Mongodb服务器，运行项目</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%89%E5%BE%85%E8%A7%A3%E5%86%B3%E9%97%AE%E9%A2%98"><span class="nav-number">1.2.</span> <span class="nav-text">有待解决问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3"><span class="nav-number">1.3.</span> <span class="nav-text">问题解决</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%981%EF%BC%9A%E5%90%AF%E5%8A%A8%E9%80%9F%E5%BA%A6%E6%85%A2"><span class="nav-number">1.3.1.</span> <span class="nav-text">问题1：启动速度慢</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-%E6%9B%BF%E6%8D%A2%E4%BE%9D%E8%B5%96%EF%BC%8C%E5%B0%86%E4%B9%8B%E5%89%8D%E7%9A%84%E4%BE%9D%E8%B5%96"><span class="nav-number">1.3.1.1.</span> <span class="nav-text">1.	替换依赖，将之前的依赖</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-%E6%B7%BB%E5%8A%A0%E5%AE%9E%E4%BD%93%E7%B1%BB"><span class="nav-number">1.3.1.2.</span> <span class="nav-text">2.	添加实体类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-%E6%B7%BB%E5%8A%A0%E6%95%B0%E6%8D%AE%E8%AE%BF%E9%97%AE%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.3.1.3.</span> <span class="nav-text">3. 添加数据访问接口</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-%E4%BF%AE%E6%94%B9appender%E7%B1%BB"><span class="nav-number">1.3.1.4.</span> <span class="nav-text">4.	修改appender类</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%982%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BF%A1%E6%81%AF%E9%85%8D%E7%BD%AE"><span class="nav-number">1.3.2.</span> <span class="nav-text">问题2：数据库信息配置</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Daryl</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
