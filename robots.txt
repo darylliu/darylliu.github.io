@@ -1,15 +1,15 @@
-# robots.txt
 User-agent: *
 Allow: /
-Allow: /archives/ 
 Allow: /home/
+Allow: /about/
+Allow: /archives/
+Allow: /categories/
 Allow: /tags/
-
 Disallow: /js/
 Disallow: /css/
 Disallow: /fonts/
 Disallow: /vendors/
 Disallow: /fancybox/
+Disallow: /categories/
 
-Sitemap: http://www.darylliu.cn/sitemap.xml
-Sitemap: http://www.darylliu.cn/baidusitemap.xml
+Sitemap: http://rogn.top/sitemap.xml
