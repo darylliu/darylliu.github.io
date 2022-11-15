@@ -1,0 +1,1406 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Go json反序列化interface{}对int64处理</title>
+    <url>/2019/08/21/Go%20json%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96interface%7B%7D%E5%AF%B9int64%E5%A4%84%E7%90%86/</url>
+    <content><![CDATA[<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>最近在项目中遇到一个坑，Go语言在json反序列化时，如果未指定类型，则数字（比如int64）会默认是 float64，这样再次序列化的时候造成了精度丢失。<br>具体可以看如下代码</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line"></span><br><span class="line">	jsoniter &quot;github.com/json-iterator/go&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	s := &quot;&#123;\&quot;a\&quot;:6673221165400540161&#125;&quot;</span><br><span class="line"></span><br><span class="line">	d := make(map[string]interface&#123;&#125;)</span><br><span class="line">	err := jsoniter.Unmarshal([]byte(s), &amp;d)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	s2, err := jsoniter.Marshal(d)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Println(string(s2))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码执行结果是： {“a”:6673221165400540000}</p>
+<p>原始数据是：<br>{“a”:6673221165400540161}</p>
+<p>产生了精度丢失。</p>
+<h2 id="解决办法"><a href="#解决办法" class="headerlink" title="解决办法"></a>解决办法</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">	&quot;fmt&quot;</span><br><span class="line">	jsoniter &quot;github.com/json-iterator/go&quot;</span><br><span class="line">	&quot;strings&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line">	s := &quot;&#123;\&quot;a\&quot;:6673221165400540161&#125;&quot;</span><br><span class="line">	decoder := jsoniter.NewDecoder(strings.NewReader(s))</span><br><span class="line">	decoder.UseNumber()</span><br><span class="line">	d := make(map[string]interface&#123;&#125;)</span><br><span class="line">	err := decoder.Decode(&amp;d)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	s2, err := jsoniter.Marshal(d)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Println(string(s2))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上面的程序，使用了 func (*Decoder) UseNumber 方法告诉反序列化 json 的数字类型的时候，不要直接转换成 float64，而是转换成 json.Number 类型。</p>
+<p>json.Number 内部实现机制：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">// A Number represents a JSON number literal.</span><br><span class="line">type Number string</span><br><span class="line"></span><br><span class="line">// String returns the literal text of the number.</span><br><span class="line">func (n Number) String() string &#123; return string(n) &#125;</span><br><span class="line"></span><br><span class="line">// Float64 returns the number as a float64.</span><br><span class="line">func (n Number) Float64() (float64, error) &#123;</span><br><span class="line">    return strconv.ParseFloat(string(n), 64)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Int64 returns the number as an int64.</span><br><span class="line">func (n Number) Int64() (int64, error) &#123;</span><br><span class="line">    return strconv.ParseInt(string(n), 10, 64)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>json.Number 本质是字符串，反序列化的时候将 json 的数值先转成 json.Number，其实是一种延迟处理的手段，待后续逻辑需要时候，再把 json.Number 转成 float64 或者 int64。</p>
+<h2 id="特别鸣谢"><a href="#特别鸣谢" class="headerlink" title="特别鸣谢"></a>特别鸣谢</h2><p><a href="http://70data.net/1876.html">参考链接</a></p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Go</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Python图片尺寸缩放的4种方式</title>
+    <url>/2015/01/17/Python%E5%9B%BE%E7%89%87%E5%B0%BA%E5%AF%B8%E7%BC%A9%E6%94%BE%E7%9A%844%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
+    <content><![CDATA[<h1 id="Python图片尺寸缩放的4种方式"><a href="#Python图片尺寸缩放的4种方式" class="headerlink" title="Python图片尺寸缩放的4种方式"></a>Python图片尺寸缩放的4种方式</h1><p>最近由于网站对图片尺寸的需要，用python写了个小脚本，方便进行图片尺寸的一些调整，特记录如下：</p>
+<span id="more"></span>
+
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="comment">#coding=utf-8</span></span><br><span class="line"><span class="keyword">import</span> Image</span><br><span class="line"><span class="keyword">import</span> shutil</span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Graphics</span>:</span><br><span class="line">    infile = <span class="string">&#x27;D:\\myimg.jpg&#x27;</span></span><br><span class="line">    outfile = <span class="string">&#x27;D:\\adjust_img.jpg&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">fixed_size</span>(<span class="params">cls, width, height</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;按照固定尺寸处理图片&quot;&quot;&quot;</span></span><br><span class="line">        im = Image.<span class="built_in">open</span>(cls.infile)</span><br><span class="line">        out = im.resize((width, height),Image.ANTIALIAS)</span><br><span class="line">        out.save(cls.outfile)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">resize_by_width</span>(<span class="params">cls, w_divide_h</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;按照宽度进行所需比例缩放&quot;&quot;&quot;</span></span><br><span class="line">        im = Image.<span class="built_in">open</span>(cls.infile)</span><br><span class="line">        (x, y) = im.size </span><br><span class="line">        x_s = x</span><br><span class="line">        y_s = x/w_divide_h</span><br><span class="line">        out = im.resize((x_s, y_s), Image.ANTIALIAS) </span><br><span class="line">        out.save(cls.outfile)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">resize_by_height</span>(<span class="params">cls, w_divide_h</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;按照高度进行所需比例缩放&quot;&quot;&quot;</span></span><br><span class="line">        im = Image.<span class="built_in">open</span>(cls.infile)</span><br><span class="line">        (x, y) = im.size </span><br><span class="line">        x_s = y*w_divide_h</span><br><span class="line">        y_s = y</span><br><span class="line">        out = im.resize((x_s, y_s), Image.ANTIALIAS) </span><br><span class="line">        out.save(cls.outfile)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">resize_by_size</span>(<span class="params">cls, size</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;按照生成图片文件大小进行处理(单位KB)&quot;&quot;&quot;</span></span><br><span class="line">        size *= <span class="number">1024</span></span><br><span class="line">        im = Image.<span class="built_in">open</span>(cls.infile)</span><br><span class="line">        size_tmp = os.path.getsize(cls.infile)</span><br><span class="line">        q = <span class="number">100</span></span><br><span class="line">        <span class="keyword">while</span> size_tmp &gt; size <span class="keyword">and</span> q &gt; <span class="number">0</span>:</span><br><span class="line">            <span class="built_in">print</span> q</span><br><span class="line">            out = im.resize(im.size, Image.ANTIALIAS)</span><br><span class="line">            out.save(cls.outfile, quality=q)</span><br><span class="line">            size_tmp = os.path.getsize(cls.outfile)</span><br><span class="line">            q -= <span class="number">5</span></span><br><span class="line">        <span class="keyword">if</span> q == <span class="number">100</span>:</span><br><span class="line">            shutil.copy(cls.infile, cls.outfile)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">cut_by_ratio</span>(<span class="params">cls, width, height</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;按照图片长宽比进行分割&quot;&quot;&quot;</span></span><br><span class="line">        im = Image.<span class="built_in">open</span>(cls.infile)</span><br><span class="line">        width = <span class="built_in">float</span>(width)</span><br><span class="line">        height = <span class="built_in">float</span>(height)</span><br><span class="line">        (x, y) = im.size</span><br><span class="line">        <span class="keyword">if</span> width &gt; height:</span><br><span class="line">            region = (<span class="number">0</span>, <span class="built_in">int</span>((y-(y * (height / width)))/<span class="number">2</span>), x, <span class="built_in">int</span>((y+(y * (height / width)))/<span class="number">2</span>))</span><br><span class="line">        <span class="keyword">elif</span> width &lt; height:</span><br><span class="line">            region = (<span class="built_in">int</span>((x-(x * (width / height)))/<span class="number">2</span>), <span class="number">0</span>, <span class="built_in">int</span>((x+(x * (width / height)))/<span class="number">2</span>), y)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            region = (<span class="number">0</span>, <span class="number">0</span>, x, y)</span><br><span class="line"></span><br><span class="line">        <span class="comment">#裁切图片</span></span><br><span class="line">        crop_img = im.crop(region)</span><br><span class="line">        <span class="comment">#保存裁切后的图片</span></span><br><span class="line">        crop_img.save(cls.outfile)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Python</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>hexo搭建个人博客</title>
+    <url>/2017/04/21/Hexo%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<h1 id="hexo搭建个人博客"><a href="#hexo搭建个人博客" class="headerlink" title="hexo搭建个人博客"></a>hexo搭建个人博客</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近突然心血来潮想要搭建自己的博客，就去调研了几种方案：</p>
+<ul>
+<li>租个服务器。在上面搭建网站，数据库，优点是可以自己随时备份修改，很方便；缺点是花销比较大，不适合学生党，同时需要自己维护，而自己主要目的是去写文章，而没有精力去维护，所以这种方案Pass.</li>
+<li>使用国内CSDN, 博客园都知名博客网站。这种方法的优点是随时随地都可以写文章，而且只要专注于文章就可以，不用考虑维护的事情，缺点的话就是他们的网站总是掺杂着各种广告，视觉效果。。。差强人意。</li>
+<li>使用github, 利用一些现有的博客平台，比如node.js的Hexo，直接将本地.md文档生成静态的html文件作为静态页面，并将其部署到gihub pages服务器上。本文采用了这种方法。</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><ul>
+<li>安装git</li>
+<li>安装node.js</li>
+<li>安装hexo</li>
+</ul>
+<h4 id="安装-hexo"><a href="#安装-hexo" class="headerlink" title="安装 hexo"></a>安装 hexo</h4><ol>
+<li>新建目录blog(此处存放你的博客工程)</li>
+<li>进入该目录下并执行命令<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">npm install -g hexo-cli</span><br></pre></td></tr></table></figure></li>
+<li>在blog目录下新建目录hexo，并在里面进行hexo初始化<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hexo init hexo</span><br></pre></td></tr></table></figure></li>
+<li>等一切安装成功之后，执行命令<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">hexo server</span><br></pre></td></tr></table></figure>
+出现下图所示，即为成功<br><img src="/img/hexo%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/hexo1.png"><br>可以看到已经成功运行在了本地<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">http://localhost:4000/</span><br></pre></td></tr></table></figure>
+打开网站即可预览到我们的页面</li>
+</ol>
+<h3 id="Hexo-配置"><a href="#Hexo-配置" class="headerlink" title="Hexo 配置"></a>Hexo 配置</h3><h4 id="config-yml-文件配置"><a href="#config-yml-文件配置" class="headerlink" title="_config.yml 文件配置"></a>_config.yml 文件配置</h4><p>关于这个配置文件里的内容，官网有详细介绍，本人在这里只介绍比较重要的几个：</p>
+<ol>
+<li><p>deploy, 配置这部分是为了能够将博客内容发布到线上。</p>
+<pre><code> deploy:
+     type: git
+     repository: git@github.com:你的git用户名/你的git用户名.github.io.git 
+     branch: master
+</code></pre>
+</li>
+<li><p>url, 由于在blog下又建立了一个hexo,所以如果实在本地的话需要将url设置成</p>
+<pre><code> url: http://你的git网址/hexo
+ root: /hexo/
+</code></pre>
+</li>
+</ol>
+<p>但是当你上传到服务器时，需要改回</p>
+<pre><code>    url: http://你的git网址/
+    root: /
+</code></pre>
+<ol start="3">
+<li><p>theme, 主题设置<br>在hexo路径下有一个叫做themes的文件夹，里面存放了你所拥有的themes主题模版文件，这些模版都可以从git上进行下载，刚开始创建项目的时候默认是是landscape。如果想要更改博客主题，只要把对应的主题模版下载到该目录并将_config.yml中的themes设置如下</p>
+<pre><code> theme: landscape(你下载的模版文件夹名)
+</code></pre>
+</li>
+</ol>
+<h3 id="相关命令"><a href="#相关命令" class="headerlink" title="相关命令"></a>相关命令</h3><h4 id="静态文件生成"><a href="#静态文件生成" class="headerlink" title="静态文件生成"></a>静态文件生成</h4><p>每次修改博客或配置文件后记得执行以下命令进行更新</p>
+<pre><code>hexo generate
+</code></pre>
+<h4 id="部署到服务器"><a href="#部署到服务器" class="headerlink" title="部署到服务器"></a>部署到服务器</h4><p>部署到远程服务器执行以下命令</p>
+<pre><code>hexo deploy
+</code></pre>
+<p>如果失败，有可能是因为没有安装git部署器，即hexo&#x2F;node_moudles下没有hexo-deployer-git，如果是这种情况，可以进入hexo后执行以下命令</p>
+<pre><code>npm install hexo-deployer-git –save
+</code></pre>
+<h3 id="配置过程中遇到的坑"><a href="#配置过程中遇到的坑" class="headerlink" title="配置过程中遇到的坑"></a>配置过程中遇到的坑</h3><h4 id="权限问题"><a href="#权限问题" class="headerlink" title="权限问题"></a>权限问题</h4><p>在往git上部署过程中一直出现</p>
+<p><code>Error: Permission denied (publickey). fatal: Could not read from remote repository.</code></p>
+<p>后来经过在网上查了很多资料发现有两种可能的原因：</p>
+<ol>
+<li><p>git版本过高，将版本改成git 1.9版本的即可解决(但是本人没有解决，但是对其他很多人有效)</p>
+</li>
+<li><p>由于当时生成公钥的命令是</p>
+<pre><code> ssh-keygen -t rsa -C “你的git用户名@github.com”
+</code></pre>
+<p> 没有加sudo, 生成的公钥是当前用户的，然而，自己在部署到服务器时为了避免文件访问权限问题直接使用了</p>
+<pre><code> sudo hexo deploy
+</code></pre>
+<p> 该命令在执行的时候会去读取root 用户的公钥，然而显然，root用户下还没有生成对应的公钥信息，所以一直会报公钥权限问题。<br> 解决方法是生成公钥的时候也在前面加上sudo</p>
+<pre><code> sudo ssh-keygen -t rsa -C “你的git用户名@github.com”
+</code></pre>
+</li>
+</ol>
+<h4 id="hexo-generate问题"><a href="#hexo-generate问题" class="headerlink" title="hexo generate问题"></a>hexo generate问题</h4><p>在hexo generate中出现了        </p>
+<p><code>TypeError: Cannot read property &#39;offset&#39; of null</code></p>
+<p>原因是因为hexo 目录下的_confing.yml 和 主题模版文件中的_confing.yml 有关时区配置不一致或者主题模版文件中没有配置时区</p>
+<p>解决办法如下：</p>
+<pre><code>timezone: Asia/Shanghai	        
+</code></pre>
+<h3 id="建议"><a href="#建议" class="headerlink" title="建议"></a>建议</h3><h4 id="备份"><a href="#备份" class="headerlink" title="备份"></a>备份</h4><p>由于git上上传的是通过hexo生成的静态文件，并不是原生的.md文件，这意味着一旦你的本地工程文件丢失，很有可能无法找回你的文章。所以本人建议将&#x2F;hexo&#x2F;source目录下的文件进行备份，无论是自己本地备份还是上传的git备份都是可行的办法。</p>
+<h3 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h3><h4 id="打赏功能"><a href="#打赏功能" class="headerlink" title="打赏功能"></a>打赏功能</h4><p>在主题模版配置文件中，添加如下：</p>
+<pre><code>reward_comment: 坚持原创技术分享，您的支持将鼓励我继续创作！
+wechatpay: /图片路径/微信支付二维码图片
+alipay: /图片路径/支付宝支付二维码图片
+</code></pre>
+<h4 id="阅读全文"><a href="#阅读全文" class="headerlink" title="阅读全文"></a>阅读全文</h4><p>有的时候我们希望在主页不要全部显示文章内容，希望在合适的地方截断，并提示显示阅读全文，如下图所示<br>    <img src="/img/hexo%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/hexo2.png"><br>我们可以在文章内部希望截断的地方添加</p>
+<pre><code>//主页显示内容
+&lt;!--more--&gt;
+//隐藏内容
+</code></pre>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>hexo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis的过期策略及内存淘汰机制</title>
+    <url>/2019/04/28/Redis%E7%9A%84%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<p>对于一个缓存型redis，如果本身只有10G的容量，那么流量增大，写入了15G的数据，那么对于原本的10G数据是按照怎样的策略进行删除呢？在实际使用过程中，redis里数据已经设置了过期时间，但是时间到了，内存占用率还是比较高，数据没有删除的原因是什么呢？今天一起来看下。</p>
+<h2 id="问题-redis的过期删除策略以及内存淘汰机制"><a href="#问题-redis的过期删除策略以及内存淘汰机制" class="headerlink" title="问题:redis的过期删除策略以及内存淘汰机制"></a>问题:redis的过期删除策略以及内存淘汰机制</h2><h3 id="定时删除"><a href="#定时删除" class="headerlink" title="定时删除"></a>定时删除</h3><p>用一个定时器对某个key进行监视，过期则自动删除。这种方法的好处是内存会及时释放，但是由于使用到了定时器，比较消耗CPU资源，当流量比较大的时候，并不适合，所以redis并没有采用这种方案</p>
+<h3 id="定期删除"><a href="#定期删除" class="headerlink" title="定期删除"></a>定期删除</h3><p>redis默认每过100ms检查一次，当前是否有过期的key,有过期key则进行删除操作。需要说明的是，redis不是每个100ms将所有的key检查一次，而是随机抽取进行检查(如果每隔100ms,全部key进行检查，redis不用做别的事情了。。。)。因此，如果只采用定期删除策略，会导致很多key到时间没有删除。</p>
+<h3 id="惰性删除"><a href="#惰性删除" class="headerlink" title="惰性删除"></a>惰性删除</h3><p>类似懒加载，当请求获取某个key的时候，redis会检查一下，这个key如果设置了过期时间，那么会判断该key是否过期？如果过期了会执行删除操作。</p>
+<h3 id="内存淘汰机制"><a href="#内存淘汰机制" class="headerlink" title="内存淘汰机制"></a>内存淘汰机制</h3><p>按照上面的方法，对于某些key，如果定期删除一直没有选中（运气比较差）。即时去请求key的时候，也没有请求到（比较冷门的key）,惰性删除没生效。这样，redis的内存会同样会越来越高。那么就应该采用内存淘汰机制。</p>
+<p>在redis的conf文件中，可以对内存淘汰策略进行配置。</p>
+<ol>
+<li>noeviction：当内存不足以容纳新写入数据时，新写入操作会报错。应该没人用吧。</li>
+<li>allkeys-lru：当内存不足以容纳新写入数据时，在键空间中，移除最近最少使用的key。推荐使用，目前项目在用这种。</li>
+<li>allkeys-random：当内存不足以容纳新写入数据时，在键空间中，随机移除某个key。应该也没人用吧，你不删最少使用Key,去随机删。。。</li>
+<li>volatile-lru：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，移除最近最少使用的key。这种情况一般是把redis既当缓存，又做持久化存储的时候才用。不推荐</li>
+<li>volatile-random：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，随机移除某个key。依然不推荐</li>
+<li>volatile-ttl：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，有更早过期时间的key优先移除。不推荐</li>
+</ol>
+<p>ps：如果没有设置 expire 的key, 不满足先决条件(prerequisites); 那么 volatile-lru, volatile-random 和 volatile-ttl 策略的行为, 和 noeviction(不删除) 基本上一致。</p>
+<p>所以总的来说，redis是通过<strong>定期删除+惰性删除+配置的内存淘汰机制</strong>来保证内存可用的。</p>
+<h2 id="特别鸣谢"><a href="#特别鸣谢" class="headerlink" title="特别鸣谢"></a>特别鸣谢</h2><p><a href="https://note.youdao.com/">参考链接</a></p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>Redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis设计与实现-对象系统</title>
+    <url>/2019/07/03/Redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E5%AF%B9%E8%B1%A1%E7%B3%BB%E7%BB%9F/</url>
+    <content><![CDATA[<p>redis没有直接使用底层数据结构，如SDS,双向链表，字典，压缩列表，整数集合等等来实现键值数据库，而是基于这些数据结构创建了一个对象系统。</p>
+<p>使用对象的好处是，可以针对不同的使用场景，为对象设置多种不同的数据结构，从而优化对象在不同场景下的使用效率。</p>
+<p>对象定义如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct struct redisObject &#123;</span><br><span class="line"></span><br><span class="line">    //类型</span><br><span class="line">    unsigned type:4;</span><br><span class="line">    </span><br><span class="line">    //编码</span><br><span class="line">    unsigned encoding:4;</span><br><span class="line">    </span><br><span class="line">    //指向底层实现数据结构的指针</span><br><span class="line">    void *ptr;</span><br><span class="line">    </span><br><span class="line">    //内存引用计数，初创建为1，使用＋1，不再使用－1，当为0时，则内存释放</span><br><span class="line">    int refcount;</span><br><span class="line">    </span><br><span class="line">    //对象最后一次被访问的时间，用于回收算法，计算时间 </span><br><span class="line">    unsigned lru:22;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>类型。包括了<strong>字符串对象，列表对象，哈希对象，集合对象，有序集合对象</strong></li>
+<li>编码。表明了对象的底层实现数据结构，包括了<strong>long类型的整数，embstr编码的简单动态字符串，简单动态字符串，字典，双端列表，压缩列表，整数集合，跳跃表和字典</strong></li>
+</ol>
+<p>每种类型的对象都至少使用到了两种不同的编码。</p>
+<p>接下来会介绍五种对象不同情况下所使用的编码方式，以及从一种编码转化为另一种编码所需要的条件。</p>
+<h2 id="字符串对象"><a href="#字符串对象" class="headerlink" title="字符串对象"></a>字符串对象</h2><p>字符串对象的编码可以是int, raw,embstr</p>
+<p>知识要点：</p>
+<ol>
+<li>一个字符串值的长度小于39字节，则使用embstr编码，否则使用raw编码</li>
+<li>embstr: 分配一次内存，内存是一块连续的空间，回收一次内存</li>
+<li>raw：分配两次内存，回收两次内存，内存块不一定连续</li>
+<li>long double类型的浮点数在存储时是embstr编码，如果进行了某些操作，比如数字运算，则会临时转化为浮点数，操作完成之后重新embstr编码存储</li>
+<li>embstr是一个只读对象，没有相关的操作api，一旦发生改变，就会变成一个raw对象</li>
+</ol>
+<h2 id="列表对象"><a href="#列表对象" class="headerlink" title="列表对象"></a>列表对象</h2><p>列表对象的编码可以是ziplist， 也可以是linkedlist</p>
+<p>ziplist编码的列表对象使用压缩列表作为底层实现</p>
+<p>linkedlist编码的列表使用双端列表作为底层实现</p>
+<p>当列表对象同时满足以下两个条件时，使用ziplist进行编码，否则编码转换为linkedlist：</p>
+<ol>
+<li>列表对象保存的所有字符串元素的长度都小于64字节</li>
+<li>列表对象保存的元素数量小于512个</li>
+</ol>
+<h2 id="哈希对象"><a href="#哈希对象" class="headerlink" title="哈希对象"></a>哈希对象</h2><p>哈希对象的编码可以是ziplist， 也可以是hashtable</p>
+<p>ziplist编码的哈希对象，是一个压缩列表，会将每个新添加的键值对，按照键－值－键－值…的顺序推入压缩列表的末尾</p>
+<p>当哈希对象同时满足以下两个条件时，使用ziplist进行编码，否则编码转换为hashtable：</p>
+<ol>
+<li>哈希对象保存的所有键值对的键和值的字符串长度都小于64字节</li>
+<li>哈希对象保存的键值对数量小于512个</li>
+</ol>
+<h2 id="集合对象"><a href="#集合对象" class="headerlink" title="集合对象"></a>集合对象</h2><p>集合对象的编码可以是intset， 也可以是hashtable</p>
+<p>intset编码的集合对象使用整数集合作为底层实现</p>
+<p>hashtable编码的集合对象使用字段作为底层实现，字典的每个键都是一个集合元素，每个值都为null</p>
+<p>当集合对象同时满足以下两个条件时，使用intset进行编码，否则编码转换为hashtable：</p>
+<ol>
+<li>集合对象保存的所有元素都是整数值</li>
+<li>集合对象保存的元素数量小于512个</li>
+</ol>
+<h2 id="有序集合对象"><a href="#有序集合对象" class="headerlink" title="有序集合对象"></a>有序集合对象</h2><p>有序集合对象的编码可以是ziplist， 也可以是skiplist</p>
+<p>ziplist编码的有序集合对象，是一个压缩列表，会将每个新添加的集合元素，按照元素成员－分数－元素成员－分数…的顺序推入压缩列表的末尾（<strong>注意，按照分值从小到大的顺序排列</strong>）</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct zset &#123;</span><br><span class="line">    </span><br><span class="line">    zskiplist *zsl;</span><br><span class="line">    dict *dict;</span><br><span class="line">&#125; zset</span><br></pre></td></tr></table></figure>
+<p>zsl跳跃表按照从小到大保存了所有的集合元素，每个节点的object属性保存元素的成员，score属性保存具体的分值</p>
+<p>dict则创建了一个从成员到分值的映射。</p>
+<p>注意，虽然zset同时使用跳跃表和字典来保存有序集合元素，但这两种数据结构都会通过指针来共享相同元素的成员和分值，因此不会产生重复的成员或者分值，也不会因此浪费额外的内存。</p>
+<p>当有序集合对象同时满足以下两个条件时，使用ziplist进行编码，否则编码转换为skiplist：</p>
+<ol>
+<li>有序集合对象保存的所有元素成员的长度都小于64字节</li>
+<li>有序集合对象保存的元素数量小于128个</li>
+</ol>
+<h2 id="内存回收"><a href="#内存回收" class="headerlink" title="内存回收"></a>内存回收</h2><p>由于C语言不具备自动内存回收功能，redis自己构建了一个引用计数技术实现的内存回收机制。</p>
+<h2 id="对象共享"><a href="#对象共享" class="headerlink" title="对象共享"></a>对象共享</h2><p>在redis中了节省内存，多个键可以共享一个值对象（注意，必须是值对象，比如100）</p>
+<p>让多个键共享同一个值对象， 有两个步骤：</p>
+<ol>
+<li>将数据库键的值指针指向同一个现有的值对象</li>
+<li>将被共享的值对象的引用计数增一</li>
+</ol>
+<p>redis在初始化服务器时，创建了0-9999这一万个字符串对象，当需要用到时，直接共享这些对象，而不是新创建。</p>
+<p>注意，这些值对象不时只有字符串键可以使用，那些在数据结构中嵌套了字符串对象的复杂对象都可以使用这些共享对象。</p>
+<p>为什么只共享值对象呢？</p>
+<p>原因：</p>
+<ol>
+<li>在使用共享对象之前，要先检查给定的共享对象和想要创建的对象是否一致，而这个检查的过程复杂度越高，CPU消耗时间也就越高</li>
+<li>如果是值对象，复杂度O(1), 如果是保存字符串的字符串对象，复杂对为O(N), 如果是列表对象和哈希对象，则复杂度是O(N2)</li>
+</ol>
+<p>因此，受到CPU限制，redis只对值对象进行共享</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>Redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis学习1之快速入门</title>
+    <url>/2016/09/08/Redis%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/</url>
+    <content><![CDATA[<h1 id="Redis学习1之快速入门"><a href="#Redis学习1之快速入门" class="headerlink" title="Redis学习1之快速入门"></a>Redis学习1之快速入门</h1><h2 id="Redis简介"><a href="#Redis简介" class="headerlink" title="Redis简介"></a>Redis简介</h2><p>redis是一个高性能的key-value数据库（可以理解成一个hashmap）</p>
+<span id="more"></span>
+
+<h2 id="Redis安装"><a href="#Redis安装" class="headerlink" title="Redis安装"></a>Redis安装</h2><p>下载地址：<a href="https://github.com/MSOpenTech/redis/releases">https://github.com/MSOpenTech/redis/releases</a></p>
+<p>将下载好的压缩包(<strong>Redis-x64-3.2.100.zip</strong>)解压到某目录下(<strong>D:\ redis</strong>)</p>
+<p>打开cmd窗口，进入该目录</p>
+<p>运行  <strong>redis-server.exe redis.windows.conf</strong></p>
+<p><strong><font color = red>为了方便起见，也可以将其路径加入到环境变量当中</font></strong></p>
+<p><img src="/img/Redis%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/redis1.png"></p>
+<p>出现如上图所示，则服务器启动成功。</p>
+<p>当前窗口不要关闭，打开另一个新的窗口，进入该目录</p>
+<p>运行  <strong>redis-cli.exe -h 127.0.0.1 -p 6379</strong></p>
+<p><img src="/img/Redis%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/redis2.png"></p>
+<p>出现如上图所示，则客户端启动成功。</p>
+<p>下面可以先跑一个例子测试一下<br>存入一个新的键值对，**set key test **(key 是键，test是值)<br>然后再取出， <strong>get key</strong></p>
+<p><img src="/img/Redis%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/redis3.png"></p>
+<h2 id="Redis-配置"><a href="#Redis-配置" class="headerlink" title="Redis 配置"></a>Redis 配置</h2><p>可以通过输入命令<strong>config get * <strong>获得当前所有配置<br>如果希望能够对某一项配置进行设置的话，可以输入命令</strong> config set key</strong>(key 为配置项的名称)</p>
+<p>例如可以通过<strong>config get bink</strong>获取绑定的ip地址</p>
+<p><img src="/img/Redis%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/redis4.png"></p>
+<h2 id="Redis-数据类型"><a href="#Redis-数据类型" class="headerlink" title="Redis 数据类型"></a>Redis 数据类型</h2><p>redis 支持五种数据类型</p>
+<ol>
+<li>string   字符串</li>
+<li>hash  哈希</li>
+<li>list   列表</li>
+<li>set   集合</li>
+<li>sorted set   有序集合</li>
+</ol>
+<h3 id="string"><a href="#string" class="headerlink" title="string"></a>string</h3><p>sring 数据类型是最基本的数据类型</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis 127.0.0.1:6379&gt; SET name &quot;root&quot;</span><br><span class="line">OK</span><br><span class="line">redis 127.0.0.1:6379&gt; GET name</span><br><span class="line">&quot;root&quot;</span><br></pre></td></tr></table></figure>
+
+<p>一般使用<strong>set</strong> 和**get **命令对其进行操作</p>
+<h3 id="hash"><a href="#hash" class="headerlink" title="hash"></a>hash</h3><p>hash 数据类型一般用于存储对象，它的Key 可能是一个人的姓名， 而value则是一个人的基本信息，包括性别，年龄，电话号码等等</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">127.0.0.1:6379&gt;  HMSET student sex &quot;male&quot; age 10 phone 123456</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt;  HGETALL student</span><br><span class="line">1) &quot;sex&quot;</span><br><span class="line">2) &quot;male&quot;</span><br><span class="line">3) &quot;age&quot;</span><br><span class="line">4) &quot;10&quot;</span><br><span class="line">5) &quot;phone&quot;</span><br><span class="line">6) &quot;123456&quot;</span><br></pre></td></tr></table></figure>
+
+<p>我们可以通过使用<strong>HMSET</strong> 一次性把所有的属性添加至key所对应的哈希表中<br>然后通过<strong>HGETALL</strong>一次性把所有的属性从哈希表中取出<br>也可以单独使用<br><strong>HGET KEY FIELD</strong> 单独获取某个哈希表的某一项<br>**HSET KEY FIELD VALUE ** 单独设置某个哈希表的某一项</p>
+<h3 id="list"><a href="#list" class="headerlink" title="list"></a>list</h3><p>list 数据类型是一个简单的列表，按照用户插入的顺序进行排序</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis 127.0.0.1:6379&gt; LPUSH students “bob”</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; LPUSH students “alice”</span><br><span class="line">(integer) 2</span><br><span class="line">redis 127.0.0.1:6379&gt; LPUSH students “jack”</span><br><span class="line">(integer) 3</span><br><span class="line">redis 127.0.0.1:6379&gt; LRANGE students 0 10</span><br><span class="line"></span><br><span class="line">1) &quot;jack&quot;</span><br><span class="line">2) &quot;alice&quot;</span><br><span class="line">3) &quot;bob&quot;</span><br></pre></td></tr></table></figure>
+
+
+<p>在上述例子中，我们使用<strong>LPUSH KEY VALUE</strong> 将新值插入到列表头部，然后使用<strong>LRANG KEY START STOP</strong> 来输出一定下标范围内的所有值</p>
+<p>我们还可以使用<br><strong>LPOP key</strong>  移出并获取列表的第一个元素<br><strong>RPUSHX key value</strong>  在列表的末尾添加一个新的元素<br><strong>RPOP key</strong>  移除并获取列表最后一个元素</p>
+<h3 id="set"><a href="#set" class="headerlink" title="set"></a>set</h3><p>set是string类型的无序集合，既然是集合，那么其中的元素则必然是唯一的，不能出现重合的元素，如果添加了重复的元素进去，不会报错</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis 127.0.0.1:6379&gt; SADD student 1</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; SADD student “new”</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; SMEMBERS student</span><br><span class="line"></span><br><span class="line">1) &quot;new&quot;</span><br><span class="line">2) &quot;1&quot;</span><br></pre></td></tr></table></figure>
+
+<p>我们使用<strong>SADD key member</strong> 添加一个元素<br>并使用<strong>SMEMBERS key</strong>　来获取所有集合中的元素</p>
+<h3 id="sorted-set"><a href="#sorted-set" class="headerlink" title="sorted set"></a>sorted set</h3><p>sorted set 有序集合和普通的集合一样，都是不允许有重复的元素存在，但是不一样的是，有序集合中的元素都会关联一个数值，redis通过该值为集合中的元素进行排序</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">redis 127.0.0.1:6379&gt; ZADD student 5 bob</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; ZADD student 2 alice</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; ZADD student 7 jack</span><br><span class="line">(integer) 1</span><br><span class="line">redis 127.0.0.1:6379&gt; ZRANGE runoobkey 0 10 WITHSCORES</span><br><span class="line"></span><br><span class="line">1) &quot;alice&quot;</span><br><span class="line">2) &quot;2&quot;</span><br><span class="line">3) &quot;bob&quot;</span><br><span class="line">4) &quot;5&quot;</span><br><span class="line">5) &quot;jack&quot;</span><br><span class="line">6) &quot;7&quot;</span><br></pre></td></tr></table></figure>
+
+<p>以上例子中，我们通过<strong>ZADD key score member <strong>来为一个有序集合添加一个元素并绑定一个分数，并通过</strong>ZRANGE key start stop WITHSCORES</strong> 来通过下边范围获取相应的元素</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>Redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习3之数据库集成mybatis</title>
+    <url>/2016/11/03/SpringBoot%E5%AD%A6%E4%B9%A03%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E9%9B%86%E6%88%90mybatis/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习3之数据库集成mybatis"><a href="#SpringBoot学习3之数据库集成mybatis" class="headerlink" title="SpringBoot学习3之数据库集成mybatis"></a>SpringBoot学习3之数据库集成mybatis</h1><p>作为一个Web框架，必然要与数据库打交道，这里介绍了如何将SpringBoot与mybatis进行集成的方法</p>
+<span id="more"></span>
+
+<h2 id="添加相关依赖"><a href="#添加相关依赖" class="headerlink" title="添加相关依赖"></a>添加相关依赖</h2><p>pom.xml如下</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 使用数据源 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>druid<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.0.14<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">&lt;!-- mysql --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>mysql<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mysql-connector-java<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">scope</span>&gt;</span>runtime<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">&lt;!-- mybatis --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span>  </span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mybatis.spring.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span>  </span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mybatis-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span>  </span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.1.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span>  </span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="在配置文件application-dev-yml中配置"><a href="#在配置文件application-dev-yml中配置" class="headerlink" title="在配置文件application-dev.yml中配置"></a>在配置文件application-dev.yml中配置</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">spring:</span><br><span class="line">  datasource:</span><br><span class="line">    url: jdbc:mysql://10.31.85.33:3306/School?useUnicode=true&amp;characterEncoding=utf-8&amp;autoReconnect=true&amp;zeroDateTimeBehavior=convertToNull</span><br><span class="line">    username: root</span><br><span class="line">    password: 123456</span><br><span class="line">    driver-class-name: com.mysql.jdbc.Driver</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建实体类"><a href="#创建实体类" class="headerlink" title="创建实体类"></a>创建实体类</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">User</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> Integer id;</span><br><span class="line">    <span class="keyword">private</span> String name;</span><br><span class="line">    <span class="keyword">public</span> Integer <span class="title function_">getId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> id;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setId</span><span class="params">(Integer id)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.id = id;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getName</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> name;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setName</span><span class="params">(String name)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.name = name;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建Mapper接口"><a href="#创建Mapper接口" class="headerlink" title="创建Mapper接口"></a>创建Mapper接口</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Mapper</span> </span><br><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">UserMapper</span> &#123;</span><br><span class="line">    <span class="meta">@Select(&quot;SELECT * FROM user WHERE user.user_id = #&#123;userId&#125;&quot;)</span></span><br><span class="line">    <span class="meta">@Results(&#123;</span></span><br><span class="line"><span class="meta">        @Result(column = &quot;user_id&quot;, property = &quot;id&quot;),</span></span><br><span class="line"><span class="meta">        @Result(column = &quot;user_name&quot;, property = &quot;name&quot;)</span></span><br><span class="line"><span class="meta">    &#125;)</span></span><br><span class="line">    User <span class="title function_">getById</span><span class="params">(<span class="meta">@Param(&quot;userId&quot;)</span> <span class="type">long</span> houseId)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建Service"><a href="#创建Service" class="headerlink" title="创建Service"></a>创建Service</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">UserService</span> &#123;</span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    <span class="keyword">private</span> UserMapper userMapper;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">public</span> User <span class="title function_">getById</span><span class="params">(<span class="type">long</span> id)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> userMapper.getById(id);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Controller中调用"><a href="#Controller中调用" class="headerlink" title="Controller中调用"></a>Controller中调用</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Autowired</span></span><br><span class="line"><span class="keyword">private</span> UserService userService;</span><br><span class="line"><span class="meta">@RequestMapping(&quot;/&#123;id&#125;&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">getById</span><span class="params">(<span class="meta">@PathVariable(&quot;id&quot;)</span> <span class="type">int</span> id, Model model)</span> &#123;</span><br><span class="line">    model.addAttribute(<span class="string">&quot;user&quot;</span>, userService.getById(id));</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;show&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>查询成功!</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Redis设计与实现-底层数据结构</title>
+    <url>/2019/07/01/Redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E5%BA%95%E5%B1%82%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><p>本文简单介绍五种不同类型的对象，剖析底层数据结构，总结优点和缺点，帮助大家理解和记忆</p>
+<h2 id="SDS简单动态字符串"><a href="#SDS简单动态字符串" class="headerlink" title="SDS简单动态字符串"></a>SDS简单动态字符串</h2><p>定义如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">struct sdshdr &#123;</span><br><span class="line">    //记录buf数组中已使用字节的数量</span><br><span class="line">    //等于SDS所保存字符串的长度</span><br><span class="line">    int len;</span><br><span class="line">    </span><br><span class="line">    //记录buf数组中未使用字节的数量</span><br><span class="line">    int free;</span><br><span class="line">    </span><br><span class="line">    // 字节数组，用于保存字符串</span><br><span class="line">    char buf[];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>C 语言使用长度未N+1的字符数组来表示长度为N的字符串，并且字符数组的最后一个元素总是’\0’。</p>
+<p>这样的设计有几个坏处：</p>
+<ol>
+<li>每次获取字符串长度的操作复杂度为O(n)，通过遍历字符数组获得。</li>
+<li>对于一些二进制数据，包含一些特殊字符，乃至于’\0’字符，无法保存</li>
+<li>缓冲区溢出。s1为”redis”, s2为”cluster”， 二者内存相连，一旦s1发生变更为更长的字符串如’redis_test’，则会影响s2的值</li>
+<li>每次扩展和截断字符串，都需要进行耗时严重的内存重分配操作</li>
+</ol>
+<p>SDS的结构则完美避开了这些风险：</p>
+<ol>
+<li>通过len记录了字符串长度，每次获取长度操作为O(1)</li>
+<li>由于不需要根据末尾的空字符判定字符串结束，所以支持复杂的二进制数据</li>
+<li>杜绝缓冲区溢出，在修改字符串之前会首先根据len判断空间是否足够，不够的话，进行空间大小的修改</li>
+<li>扩展字符串采用空间预分配策略，截断字符串采用惰性空间释放策略。</li>
+</ol>
+<p><strong>空间预分配</strong></p>
+<ol>
+<li><p>如果对SDS进行修改时，len的值小于1MB，那么预分配和len同样大小的未使用空间，即free &#x3D;&#x3D; len</p>
+</li>
+<li><p>如果len的值大于1MB，那么程序会固定分配1MB的free</p>
+<p>​</p>
+</li>
+</ol>
+<p><strong>惰性空间释放</strong></p>
+<ol>
+<li>当需要进行截断操作时，程序并不立即使用内存重分配收回多余内存，而是使用free来记录多出来的字节，并等待将来的使用</li>
+<li>SDS存在api可以真正删除未使用的空间</li>
+</ol>
+<h2 id="链表"><a href="#链表" class="headerlink" title="链表"></a>链表</h2><p>redis实现的c语言本身没有内置链表，因此redis自己实现了一套。</p>
+<p>定义如下（<strong>注意，是双向链表</strong>）：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct listNode &#123;</span><br><span class="line">    //前置节点</span><br><span class="line">    struct listNode *prev;</span><br><span class="line">    </span><br><span class="line">    //后置节点</span><br><span class="line">    struct listNode *next;</span><br><span class="line">    </span><br><span class="line">    //节点的值</span><br><span class="line">    void *value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct list &#123;</span><br><span class="line">    //表头节点</span><br><span class="line">    listNode *head;</span><br><span class="line">    </span><br><span class="line">    //表尾节点</span><br><span class="line">    listNode *tail;</span><br><span class="line">    </span><br><span class="line">    //链表节点数量</span><br><span class="line">    unsigned long length;</span><br><span class="line">    </span><br><span class="line">    //表头值复制函数</span><br><span class="line">    void *(*dup)(void *ptr);</span><br><span class="line">    </span><br><span class="line">    //表头值释放函数</span><br><span class="line">    void *(*free)(void *ptr);</span><br><span class="line">    </span><br><span class="line">    //节点值对比函数</span><br><span class="line">    void *(*match)(void *ptr, void *key);</span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>redis链表的特点：</p>
+<ol>
+<li>双向</li>
+<li>无环</li>
+<li>带表头指针和表尾指针，获取复杂度为O(1)</li>
+<li>带链表长度计数器，获取复杂度为O(1)</li>
+</ol>
+<h2 id="字典"><a href="#字典" class="headerlink" title="字典"></a>字典</h2><p>redis实现的c语言本身没有内置字典（键值对），因此redis自己实现了一套。</p>
+<p>字典使用哈希表实现。</p>
+<p>哈希表整体实现使用<strong>拉链法</strong>实现。</p>
+<p>每个字典包含了一个长度为2的哈希表数组ht，这个数组一般只使用ht[0]的哈希表，ht[1]只会在对ht[0]rehash时使用。</p>
+<p>如果两个键hash之后发生冲突，则在相同的索引下，构成一个链表，新节点位于头部（因为没有指向链表尾部的指针）。</p>
+<p>当哈希表需要扩展和收缩时，策略是：</p>
+<ol>
+<li>为ht[1]分配空间，如果是扩展操作，则大小为第一个大于等于ht[0]已经使用的节点数的2倍数的2的n 次幂（有点绕，比如已经使用了5，那么应该扩展为5 * 2 &#x3D; 10 &lt; 16 即16的空间）</li>
+<li>如果是收缩操作，则大小为第一个大于等于ht[0]已经使用的节点数的2的n 次幂（比如已经使用了5，那么应该扩展为5 &lt; 8 即8的空间）</li>
+<li>将ht[0]上的键值对重新rehash计算索引，转移到ht[1]上</li>
+<li>释放ht[0], 将ht[1]设置为hr[0]，并为ht[1]新创建一个空白哈希表，为下一次rehash做准备</li>
+</ol>
+<p>正常情况下，扩容复杂因子为1，收缩复杂因子为5。（还有非正常情况）</p>
+<p>在将ht[0]上的值rehash到ht[1]上时，采用渐进式rehash，策略是：</p>
+<ol>
+<li>字典中维护rehashindx，默认－1</li>
+<li>每次对字典的增删改查操作之后，都会执行一次rehash,把rehashindx对应索引的键值对，重新hash到ht[1]上，直到全部结束</li>
+<li>好处是，避免了集中式的rehash而带来的巨大计算量，而是分多次，渐进式的完成操作。</li>
+</ol>
+<p>需要注意的是，在此期间：</p>
+<ol>
+<li>查找操作，会ht[0], ht[1]都查，优先查ht[0]，如果找不到，才会查ht[1]</li>
+<li>添加操作，只会添加到ht[1]</li>
+<li>删除和修改操作则是两个哈希表都会执行</li>
+</ol>
+<p>这样做保证了ht[0]只会越来越少，直至变成空表。</p>
+<h2 id="跳跃表"><a href="#跳跃表" class="headerlink" title="跳跃表"></a>跳跃表</h2><p>跳跃表是一种有序数据结构，平均O(logN),最坏O(N)复杂度的节点查找。</p>
+<p>跳跃表节点结构如下</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct zskiplistNode &#123;</span><br><span class="line">    //后退指针</span><br><span class="line">    struct zskiplistNode *backward;</span><br><span class="line">    </span><br><span class="line">    //分值</span><br><span class="line">    double *score;</span><br><span class="line">    </span><br><span class="line">    //成员对象</span><br><span class="line">    robj *obj;</span><br><span class="line">    </span><br><span class="line">    //层</span><br><span class="line">    struct zskiplistLevel&#123;</span><br><span class="line">        //前进指针</span><br><span class="line">        struct zskiplistNode; *forward</span><br><span class="line">        </span><br><span class="line">        //跨度</span><br><span class="line">        unsigned int span;</span><br><span class="line">    &#125; level[];</span><br><span class="line">    </span><br><span class="line">&#125; zskiplistNode</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>层。每次新创建一个新跳跃表节点的时候，会随机声称一个介于1到32之间的值作为level数组的大小</li>
+<li>前进指针。用于从表头向表尾方向访问节点</li>
+<li>跨度。用于记录两个跳跃表节点之前的跨度值（是否能一步到位）</li>
+<li>后退指针。从表尾向表头方向访问</li>
+<li>分值。跳跃表中所有节点都按照分值从小到大排序</li>
+<li>成员对象。一个sds字符串对象</li>
+</ol>
+<p>跳跃表结构如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct zskiplist &#123;</span><br><span class="line">    //表头节点和表尾节点</span><br><span class="line">    structz skiplistNode *header, *tail;</span><br><span class="line">    </span><br><span class="line">    //表中节点的数量</span><br><span class="line">    unsigned long length;</span><br><span class="line">    </span><br><span class="line">    //表中节点层数最大的节点的层数</span><br><span class="line">    int level;</span><br><span class="line">    </span><br><span class="line">&#125; zkiplist;</span><br></pre></td></tr></table></figure>
+
+<h2 id="整数集合"><a href="#整数集合" class="headerlink" title="整数集合"></a>整数集合</h2><p>如果当一个集合只包含整数值元素，并且整个集合数量不多时，redis会使用整数集合来作为集合键的底层实现</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">typedef struct intset &#123;</span><br><span class="line">    //编码方式</span><br><span class="line">    uint32_t encoding;</span><br><span class="line">    </span><br><span class="line">    //集合包含的元素数量</span><br><span class="line">    uint32_t length;</span><br><span class="line">    </span><br><span class="line">    //保存元素的数组，从小到大有序存储</span><br><span class="line">    int8_t contents[];</span><br><span class="line">    </span><br><span class="line">&#125; intset;</span><br></pre></td></tr></table></figure>
+
+<p>contents虽然声明了是int8_t,但实际真正的取值取决于encoding</p>
+<p>当新增一个新元素时，如果该元素类型比整数集合现有所有元素类型都长，则需先进行升级操作，然后再添加</p>
+<ol>
+<li>根据新元素类型，扩展整数集合底层数组的空间大小，并为新元素分配空间</li>
+<li>将底层数组所有的元素转化成与新元素相同的类型，并将类型转化后的元素放置到正确的位上，而且再放置元素的过程中，需要继续维持底层数组的有序性质不变</li>
+<li>将新元素添加到底层数组里</li>
+</ol>
+<p>由于以上原因，向整数集合添加新元素的时间复杂度为O(N)</p>
+<p>注意，一旦升级，编码就会一直保持升级后的状态，整数集合不支持降级。</p>
+<h2 id="压缩列表"><a href="#压缩列表" class="headerlink" title="压缩列表"></a>压缩列表</h2><p>压缩列表是列表键和哈希键的底层实现之一。</p>
+<p>当一个列表键或者哈希键，值包含少量列表项，且要么为小整数，要么为长度较短的字符串，则redis会采用压缩列表作为其底层实现方式。</p>
+<p>为什么压缩节点能够节省内存呢？</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>Redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习2之配置文件</title>
+    <url>/2016/10/22/SpringBoot%E5%AD%A6%E4%B9%A02%E4%B9%8B%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习2之配置文件"><a href="#SpringBoot学习2之配置文件" class="headerlink" title="SpringBoot学习2之配置文件"></a>SpringBoot学习2之配置文件</h1><p>虽然SpringBoot号称零配置，但是在实际开发过程中，我们常常需要进行一些额外信息的配置，比如数据库连接的一些参数，或者分布式服务的相关配置等等，那么这个时候就有可能用到我们本章的内容。</p>
+<span id="more"></span>
+
+<h2 id="SpringBoot-添加自定义属性"><a href="#SpringBoot-添加自定义属性" class="headerlink" title="SpringBoot 添加自定义属性"></a>SpringBoot 添加自定义属性</h2><p>当我们在创建一个springboot项目时，可以在其src&#x2F;main&#x2F;java&#x2F;resources目录下创建一个名为<strong>application.properties</strong>的文件或者<strong>application.yml</strong>文件作为配置文件，springboot会默认对该名称的文件进行读取。</p>
+<p>在application.yml中添加如下属性</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">test:</span><br><span class="line">    id: 1</span><br><span class="line">    name: bob</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意，不要使用tab，制表符等进行缩进，请使用空格</strong></p>
+<p>如果想要在程序中读取以上属性，可以使用**<font color = red>@Value(“${属性名}”)</font>**注解</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Controller</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Value(&quot;$&#123;test.id&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">private</span> String id;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@RequestMapping(&quot;/&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">(Model model)</span> &#123;</span><br><span class="line">        model.addAttribute(<span class="string">&quot;id&quot;</span>, id);</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        SpringApplication.run(App.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="将属性赋值给实体类"><a href="#将属性赋值给实体类" class="headerlink" title="将属性赋值给实体类"></a>将属性赋值给实体类</h2><p>当属性非常多的时候，如果每一个都使用**@Value**注解，则过于麻烦，这个时候，我们可以根据这些属性，给他们创造一个统一的实体类，比如</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@ConfigurationProperties(prefix = &quot;test&quot;)</span></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">ConfigBean</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> String name;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> id;</span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getName</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> name;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setName</span><span class="params">(String name)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.name = name;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">int</span> <span class="title function_">getId</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> id;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setId</span><span class="params">(<span class="type">int</span> id)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.id = id;</span><br><span class="line">    &#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>同时需要在application类添加@EnableConfigurationProperties</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@SpringBootApplication</span></span><br><span class="line"><span class="meta">@Controller</span></span><br><span class="line"><span class="meta">@EnableConfigurationProperties(&#123;ConfigBean.class&#125;)</span>  </span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line">    <span class="meta">@Autowired</span></span><br><span class="line">    ConfigBean configBean;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@RequestMapping(&quot;/&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">(Model model)</span> &#123;</span><br><span class="line">        model.addAttribute(<span class="string">&quot;id&quot;</span>, configBean.getId());</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        SpringApplication.run(App.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>启动工程，信息读取成功</p>
+<p><strong>@EnableConfigurationProperties</strong>注解中可以存放多个类，用,分割，比如</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@EnableConfigurationProperties(&#123;ConfigBean1.class，ConfigBean2.class &#125;)</span></span><br></pre></td></tr></table></figure>
+<p>同时，如果你的配置信息不想放到<strong>application.yml</strong>这个默认的文件中，你也可以将其放到自己的配置文件中，比如该自定义配置文件叫做<strong>”myapplication.yml”</strong>，然后在配置实体类上额外添加注解即可。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@PropertySource(value = &quot;classpath: myapplication.yml&quot;)</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="多环境配置文件"><a href="#多环境配置文件" class="headerlink" title="多环境配置文件"></a>多环境配置文件</h2><p>在实际开发过程中，为了保证线上程序的正确性，常常使用多套配置，比如开发一套配置，测试一套配置，实际生产一套配置，而我们需要在这些多个配置之间来回切换。<br>我们可以通过在代码中更改@PropertySource 中的内容来进行切换，但是这样过于麻烦</p>
+<p>其实我们可以采用如下手段：</p>
+<p>首先，给各个开发环境进行命名</p>
+<ol>
+<li><strong>application-test.yml：测试环境</strong></li>
+<li><strong>application-dev.yml：开发环境</strong></li>
+<li><strong>application-prod.yml：生产环境</strong></li>
+</ol>
+<p>然后只需要在application.yml中配置</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">spring:</span><br><span class="line">  profiles:</span><br><span class="line">    active: dev</span><br></pre></td></tr></table></figure>
+
+<p>当需要切换的时候直接将active这一属性进行切换即可（test&#x2F;dev&#x2F;prod）</p>
+<p>比如我们在test 中</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">server:</span><br><span class="line">  port: 8081</span><br></pre></td></tr></table></figure>
+
+<p>在dev中</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">server:</span><br><span class="line">  port: 8082</span><br></pre></td></tr></table></figure>
+
+<p>然后现在运行就会发现，浏览器访问地址变为了<strong><a href="http://localhost:8082/">http://localhost:8082/</a></strong></p>
+<p>说明：只要格式按照**<font color = red>application-{环境标识}.yml</font><strong>或者</strong><font color = red>application-{环境标识}.properties</font><strong>即可，不一定必须是</strong>dev&#x2F;test&#x2F;prod&#x2F;**，以上命名只是为了方便区分。</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习4之Logback使用</title>
+    <url>/2016/11/25/SpringBoot%E5%AD%A6%E4%B9%A04%E4%B9%8BLogback%E4%BD%BF%E7%94%A8/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习4之Logback使用"><a href="#SpringBoot学习4之Logback使用" class="headerlink" title="SpringBoot学习4之Logback使用"></a>SpringBoot学习4之Logback使用</h1><p>在开发过程中，为了能够看到一些程序执行的中间结果，往往会在代码中加入一些标准输出到屏幕(Java中一般使用System.out.println)，但是由由于IO操作也是由当前线程执行，只有当当前输出语句执行完成之后，才会有继续执行下面的任务。所以会影响代码的执行效率。</p>
+<p>而是用一些Log工具，不但可以控制日志输出，还可以控制日志输出的级别，同时不影响程序的正常执行。</p>
+<p>本文在这里介绍了SpringBoot开发过程中经常使用到的Logback工具的简单使用</p>
+<span id="more"></span>
+
+
+
+<h2 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h2><p>由于SpringBoot默认支持Logback，所以无需添加额外的引用，直接在配置文件里配置即可</p>
+<p>在工程中新建类LogHelper，专门处理Log相关功能</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.slf4j.Logger;</span><br><span class="line"><span class="keyword">import</span> org.slf4j.LoggerFactory;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LogHelper</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">Logger</span> <span class="variable">logger</span> <span class="operator">=</span> LoggerFactory.getLogger(<span class="built_in">this</span>.getClass());  </span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">helpMethod</span><span class="params">()</span>&#123;  </span><br><span class="line">        logger.debug(<span class="string">&quot;This is a debug message&quot;</span>);  </span><br><span class="line">        logger.info(<span class="string">&quot;This is an info message&quot;</span>);  </span><br><span class="line">        logger.warn(<span class="string">&quot;This is a warn message&quot;</span>);  </span><br><span class="line">        logger.error(<span class="string">&quot;This is an error message&quot;</span>);  </span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在该类中，分别打印了debug , info , warn ,error 四种级别的的信息<br>调用该类，可以看到执行结果</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A04%E4%B9%8BLogback%E4%BD%BF%E7%94%A8/springboot1.png"></p>
+<p>这是Logback默认配置下的显示信息，我们注意到debug级别的信息并没有打印下来</p>
+<p>这个很容易设置，只要在application.yml中配置</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">logging:</span><br><span class="line">  file: log.log  </span><br><span class="line">  level:</span><br><span class="line">    SpringBoot.SpringBoot : debug  </span><br></pre></td></tr></table></figure>
+
+
+<p>上面的**<font color = red>log.log</font>**是输出的日志文件名<br>SpringBoot.SpringBoot是包名，即你希望设置日志级别的包名，将其设置为debug<br>再次调用该类</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A04%E4%B9%8BLogback%E4%BD%BF%E7%94%A8/springboot2.png"></p>
+<p>发现多出了debug信息<br>同时，工程目录下发现生成的日志文件</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A04%E4%B9%8BLogback%E4%BD%BF%E7%94%A8/springboot3.png"></p>
+<h2 id="logback-xml文件配置"><a href="#logback-xml文件配置" class="headerlink" title="logback.xml文件配置"></a>logback.xml文件配置</h2><p>以上功能基本可以满足个人的开发，但是当我们需要更加丰富的功能时，则需要对logback.xml文件进行更加细致的配置</p>
+<p><strong>&#x2F;&#x2F;待续</strong></p>
+<p><strong><font color = red>如果在 logback.xml 和 application.yml 中定义了相同的配置（如都配置了 SpringBoot.SpringBoot）但是输出级别不同，则 application. yml 的优先级高于 logback.xml  </font></strong></p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><p><a href="http://blog.csdn.net/sun_t89/article/details/52130839">http://blog.csdn.net/sun_t89&#x2F;article&#x2F;details&#x2F;52130839</a><br><a href="http://412887952-qq-com.iteye.com/blog/2307244">http://blog.csdn.net/sun_t89&#x2F;article&#x2F;details&#x2F;52130839</a></p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习5之自定义注解</title>
+    <url>/2016/12/01/SpringBoot%E5%AD%A6%E4%B9%A05%E4%B9%8B%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B3%A8%E8%A7%A3/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习5之自定义注解"><a href="#SpringBoot学习5之自定义注解" class="headerlink" title="SpringBoot学习5之自定义注解"></a>SpringBoot学习5之自定义注解</h1><p>在springboot中经常用到一些注解，包括我们在前文中已经遇到的@Controller, @RestController, @RequestMapping等等，这些注解用起来简单，方便。<br>那我们能不能自定义一些注解呢？自定义注解的实现其实是springboot对aop的支持。</p>
+<span id="more"></span>
+
+<h2 id="自定义注解步骤"><a href="#自定义注解步骤" class="headerlink" title="自定义注解步骤"></a>自定义注解步骤</h2><h4 id="1-添加依赖"><a href="#1-添加依赖" class="headerlink" title="1. 添加依赖"></a>1. 添加依赖</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-aop<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-编写自定义注解类"><a href="#2-编写自定义注解类" class="headerlink" title="2. 编写自定义注解类"></a>2. 编写自定义注解类</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Target(&#123; ElementType.METHOD, ElementType.TYPE &#125;)</span></span><br><span class="line"><span class="meta">@Retention(RetentionPolicy.RUNTIME)</span></span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="keyword">public</span> <span class="meta">@interface</span> MyLog &#123;</span><br><span class="line">    String <span class="title function_">value</span><span class="params">()</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-编写注解类切面"><a href="#3-编写注解类切面" class="headerlink" title="3. 编写注解类切面"></a>3. 编写注解类切面</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Aspect</span></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span>  <span class="title class_">OperateAspect</span> &#123;</span><br><span class="line">    <span class="meta">@Pointcut(&quot;@annotation(SpringBoot.SpringBoot.annotation.OperateLog)&quot;)</span></span><br><span class="line">    <span class="keyword">public</span>  <span class="keyword">void</span> <span class="title function_">annotationPointCut</span><span class="params">()</span> &#123;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Before(&quot;annotationPointCut()&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">before</span><span class="params">(JoinPoint joinPoint)</span>&#123;</span><br><span class="line">       <span class="type">MethodSignature</span> <span class="variable">sign</span> <span class="operator">=</span>  (MethodSignature)joinPoint.getSignature();</span><br><span class="line">       <span class="type">Method</span> <span class="variable">method</span> <span class="operator">=</span> sign.getMethod();</span><br><span class="line">       <span class="type">OperateLog</span> <span class="variable">annotation</span> <span class="operator">=</span> method.getAnnotation(OperateLog.class);</span><br><span class="line">       System.out.print(<span class="string">&quot;打印：&quot;</span>+annotation.value()+<span class="string">&quot; 前置日志&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="4-添加对aspect的支持"><a href="#4-添加对aspect的支持" class="headerlink" title="4. 添加对aspect的支持"></a>4. 添加对aspect的支持</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@SpringBootApplication</span></span><br><span class="line"><span class="meta">@Controller</span></span><br><span class="line"><span class="meta">@EnableAspectJAutoProxy</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        SpringApplication.run(App.class, args);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="5-在controler层使用注解"><a href="#5-在controler层使用注解" class="headerlink" title="5. 在controler层使用注解"></a>5. 在controler层使用注解</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(&quot;/&quot;)</span></span><br><span class="line"><span class="meta">@ResponseBody</span></span><br><span class="line"><span class="meta">@OperateLog(&quot;测试&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">getById</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="6-打开浏览器，调用该接口，控制台输出"><a href="#6-打开浏览器，调用该接口，控制台输出" class="headerlink" title="6. 打开浏览器，调用该接口，控制台输出"></a>6. 打开浏览器，调用该接口，控制台输出</h4><p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A05%E4%B9%8B%E8%87%AA%E5%AE%9A%E4%B9%89%E6%B3%A8%E8%A7%A3/springboot1.png"></p>
+<h2 id="注解解释"><a href="#注解解释" class="headerlink" title="注解解释"></a>注解解释</h2><h4 id="Target"><a href="#Target" class="headerlink" title="@Target"></a>@Target</h4><p>@Target  说明了Annotation所修饰的对象范围</p>
+<p>取值(ElementType)有：<br>　　　　1.CONSTRUCTOR:用于描述构造器<br>　　　　2.FIELD:用于描述域<br>　　　　3.LOCAL_VARIABLE:用于描述局部变量<br>　　　　4.METHOD:用于描述方法<br>　　　　5.PACKAGE:用于描述包<br>　　　　6.PARAMETER:用于描述参数<br>　　　　7.TYPE:用于描述类、接口(包括注解类型) 或enum声明</p>
+<h4 id="Retention"><a href="#Retention" class="headerlink" title="@Retention"></a>@Retention</h4><p>@Retention定义了该Annotation被保留的时间长短：某些Annotation仅出现在源代码中，而被编译器丢弃；而另一些却被编译在class文件中；编译在class文件中的Annotation可能会被虚拟机忽略，而另一些在class被装载时将被读取（请注意并不影响class的执行，因为Annotation与class在使用上是被分离的）。使用这个meta-Annotation可以对 Annotation的“生命周期”限制。<br>取值（RetentionPoicy）有：<br>　　　　1.SOURCE:在源文件中有效（即源文件保留）<br>　　　　2.CLASS:在class文件中有效（即class保留）<br>　　　　3.RUNTIME:在运行时有效（即运行时保留）</p>
+<h4 id="Documented"><a href="#Documented" class="headerlink" title="@Documented"></a>@Documented</h4><p>@Documented用于描述其它类型的annotation应该被作为被标注的程序成员的公共API，因此可以被例如javadoc此类的工具文档化。Documented是一个标记注解，没有成员。</p>
+<h4 id="Aspect"><a href="#Aspect" class="headerlink" title="@Aspect"></a>@Aspect</h4><p>@Aspect作用是把当前类标识为一个切面供容器读取</p>
+<h4 id="Pointcut"><a href="#Pointcut" class="headerlink" title="@Pointcut"></a>@Pointcut</h4><p>@Pointcut定义一个切点</p>
+<h4 id="Before"><a href="#Before" class="headerlink" title="@Before"></a>@Before</h4><p>@Before标识一个前置增强方法，相当于BeforeAdvice的功能</p>
+<h4 id="component"><a href="#component" class="headerlink" title="@component"></a>@component</h4><p>@component 把普通pojo实例化到spring容器中，相当于配置文件中的<bean id="" class=""/></p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><p><a href="http://www.cnblogs.com/gmq-sh/p/4798194.html">http://www.cnblogs.com/gmq-sh/p/4798194.html</a></p>
+<p><a href="https://my.oschina.net/couples/blog/846732">https://my.oschina.net/couples/blog/846732</a></p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习1之快速入门</title>
+    <url>/2016/10/20/SpringBoot%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习1之快速入门"><a href="#SpringBoot学习1之快速入门" class="headerlink" title="SpringBoot学习1之快速入门"></a>SpringBoot学习1之快速入门</h1><h2 id="环境准备"><a href="#环境准备" class="headerlink" title="环境准备"></a>环境准备</h2><p>Java环境<br>一个趁手的IDE(本文使用Eclipse)<br>Maven环境(可以自己安装或者使用IDE内置的maven)</p>
+<span id="more"></span>
+
+<h2 id="创建一个简单的Spring-boot应用"><a href="#创建一个简单的Spring-boot应用" class="headerlink" title="创建一个简单的Spring-boot应用"></a>创建一个简单的Spring-boot应用</h2><p>首先创建一个maven项目</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/springboot1.png"></p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/springboot2.png"></p>
+<p>创建好的项目结构如图所示</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/springboot3.png"></p>
+<p>并在其pom.xml中引入如下所示：</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">project</span> <span class="attr">xmlns</span>=<span class="string">&quot;http://maven.apache.org/POM/4.0.0&quot;</span> <span class="attr">xmlns:xsi</span>=<span class="string">&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span></span></span><br><span class="line"><span class="tag">  <span class="attr">xsi:schemaLocation</span>=<span class="string">&quot;http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd&quot;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">modelVersion</span>&gt;</span>4.0.0<span class="tag">&lt;/<span class="name">modelVersion</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>SpringBoot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>SpringBoot<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.0.1-SNAPSHOT<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">packaging</span>&gt;</span>jar<span class="tag">&lt;/<span class="name">packaging</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>SpringBoot<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">url</span>&gt;</span>http://maven.apache.org<span class="tag">&lt;/<span class="name">url</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">parent</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-parent<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.2.5.RELEASE<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">relativePath</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">parent</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">properties</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">project.build.sourceEncoding</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">project.build.sourceEncoding</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">properties</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">dependencies</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>junit<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>junit<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.8.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">scope</span>&gt;</span>test<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">    </span><br><span class="line">    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-web<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">dependencies</span>&gt;</span></span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">project</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<p>重新构建项目，右键<strong>项目</strong>-&gt;<strong>Maven</strong>-&gt;<strong>Update Project</strong></p>
+<p>将<strong>App.java</strong>文件改写成如下所示</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> SpringBoot.SpringBoot;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.SpringApplication;</span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.autoconfigure.SpringBootApplication;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.bind.annotation.RequestMapping;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.bind.annotation.RestController;</span><br><span class="line"><span class="meta">@SpringBootApplication</span></span><br><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line">	<span class="meta">@RequestMapping(&quot;/&quot;)</span></span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">greeting</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="string">&quot;Hello World!&quot;</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">		SpringApplication.run(App.class, args);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>右键运行该项目（作为一个普通的java application运行，这也是springboot的魅力所在），亦或者输入命令：**<font color = red>mvn spring-boot:run</font>** 运行</p>
+<p>运行成功后，访问浏览器**<font color = red><a href="http://localhost:8080/">http://localhost:8080/</a></font>** 即可看到返回的结果</p>
+<p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A01%E4%B9%8B%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/springboot4.png"></p>
+<p>程序的入口是：<strong>SpringApplication.run(App.class, args)</strong>; 其中<strong>SpringApplication</strong>可以暂时当作一个主类来看，这里先不细说，Spring Boot会判断出这是一个web应用，并启动一个内嵌的Servlet容器，一般默认是Tomcat。</p>
+<h2 id="注解说明"><a href="#注解说明" class="headerlink" title="注解说明"></a>注解说明</h2><h3 id="Controller"><a href="#Controller" class="headerlink" title="@Controller"></a>@Controller</h3><p>@Controller 注解的类会被当作一个Controller，专门用来处理不同请求不同的URL，从而有针对性的返回内容。</p>
+<h3 id="RestController"><a href="#RestController" class="headerlink" title="@RestController"></a>@RestController</h3><p>@RestController 注解整合了**@Controller<strong>和</strong>@ResponseBody<strong>。使用了这个注解的类会被当作一个Controller,而Controller中的方法</strong>无法返回jsp页面<strong>，视图解析器将不起作用，比如返回 return”success”;本来是应该返回到success.jsp页面的，但是现在只会</strong>返回一个字符串**。</p>
+<p>上文中的@RestController如果替换成@Controller则会提示找不到名为“Hello World!”的页面。</p>
+<p>所以一般不要用@RestController注解修饰某个类，一般在实际使用时，可以选择使用@Controller注解类，在该类的方法中有选择的使用@ResponseBody,这样的话，当某个方法需要返回的是一个视图的时候就不需要添加@ResponseBody，当需要返回的是一个json数据或者Xml等时，可以选择添加@ResponseBody</p>
+<h3 id="RequestMapping"><a href="#RequestMapping" class="headerlink" title="@RequestMapping"></a>@RequestMapping</h3><p>@RequestMapping 注解是用来处理请求地址映射的注解，可以用在类或方法上，如果用在类上，则表示所有该类中的响应方法都是以该地址作为父路径。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="meta">@RequestMapping(&quot;/root&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line">	<span class="meta">@RequestMapping(&quot;/&quot;)</span></span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="string">&quot; Hello World1!&quot;</span>;</span><br><span class="line">	&#125;<span class="comment">//该方法的访问路径是http://localhost:8080/root</span></span><br><span class="line">	<span class="meta">@RequestMapping(&quot;/hello2&quot;)</span></span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">hello2</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="string">&quot;Hello World2!&quot;</span>;</span><br><span class="line">	&#125;<span class="comment">//该方法的访问路径是http://localhost:8080/root/hello2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>在实际开发中，如果对于不同Id的用户进行不同的处理，常常需要在URL中加入变量以进行区分，@RequestMapping也提供类似的方法</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(&quot;/hello/&#123;id&#125;&quot;)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">(<span class="meta">@PathVariable(&quot;id&quot;)</span> <span class="type">int</span> id)</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">return</span> “Hello :” + id;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>其中**<font color = red>{id}</font><strong>就是一个占位符，可以替换成实际的id，当请求路由到该方法进行处理时，该方法根据注解</strong><font color = red>@PathVariable</font>**取出名为”id”的值，并赋予给 int id，这样你在方法中就可以将id作为一个局部变量进行使用</p>
+<p>在实际应用中，不同的Http方法，在处理过程中可能也要进行分别处理，@RequestMapping也提供了相应的解决办法</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@RequestMapping(value = &quot;/hello&quot;, method = RequestMethod.GET)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">helloGet</span><span class="params">()</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="string">&quot;hello get&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">@RequestMapping(value = &quot;/hello&quot;, method = RequestMethod.POST)</span></span><br><span class="line"><span class="keyword">public</span> String <span class="title function_">helloPost</span><span class="params">()</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="string">&quot;hello post&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>即使两个方法处理的URL是一样的，但是由于访问的http方法不一样，所以依然会路由到不同的方法分别进行处理</p>
+<h2 id="模板渲染"><a href="#模板渲染" class="headerlink" title="模板渲染"></a>模板渲染</h2><p>当使用@Controller注解某个类时，某个URL路由方法中的返回值字符串，将不再直接返回到前端进行显示，而是将寻找名为该字符串的模板进行渲染</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Controller</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">App</span> &#123;</span><br><span class="line">    <span class="meta">@RequestMapping(&quot;/hello/&#123;id&#125;&quot;)</span></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">hello</span><span class="params">(<span class="meta">@PathVariable(&quot;id&quot;)</span> String id, Model model)</span> &#123;</span><br><span class="line">        model.addAttribute(<span class="string">&quot;id&quot;</span>, id);</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;hello&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>上述例子中将寻找名为hello的模板进行渲染。</p>
+<p>在这里我们使用**<font color = red>thymeleaf</font>**模板引擎进行渲染。</p>
+<p>首先在pom.xml中引入依赖</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-thymeleaf<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<p>接下来创建资源文件夹（source folder） <strong><font color = red>src&#x2F;main&#x2F;resources</font></strong>,并在该目录下创建普通文件夹templates，并在该文件夹下创建模板文件hello.html</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">HTML</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">xmlns:th</span>=<span class="string">&quot;http://www.thymeleaf.org&quot;</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">title</span>&gt;</span>Hello SomeOne<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">meta</span> <span class="attr">http-equiv</span>=<span class="string">&quot;Content-Type&quot;</span> <span class="attr">content</span>=<span class="string">&quot;text/html; charset=UTF-8&quot;</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">p</span> <span class="attr">th:text</span>=<span class="string">&quot;&#x27;Hello, &#x27; + $&#123;id&#125; + &#x27;!&#x27;&quot;</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>**<font color = red>th:text&#x3D;”‘Hello, ‘ + ${id} + ‘!’” </font>**也就是将我们之前在@Controller方法里添加至Model的属性id进行渲染，并放入<p>标签中（因为th:text是<p>标签的属性）。</p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Thrift对象的序列化与反序列化</title>
+    <url>/2019/05/27/Thrift%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%8E%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/</url>
+    <content><![CDATA[<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><p>对象的序列化与反序列化，可能大家更多接触的是谷歌的protobuf。<br>Thrift作为一个跨语言的RPC代码生成引擎，也具备此功能。<br>本文要说的是如何使用Thrift实现对象的序列化与反序列化，其实就是，如何以protobuf的方式使用Thrift。</p>
+<p>Thrift描述文件：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># filename: demo.thrift</span><br><span class="line">struct Node &#123;</span><br><span class="line">    1: string host</span><br><span class="line">    2: i32 port</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>以生成的Python代码为例，Thrift生成的类型提供了两个关键方法：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">class Node:</span><br><span class="line">  &quot;&quot;&quot;</span><br><span class="line">  Attributes:</span><br><span class="line">   - host</span><br><span class="line">   - port</span><br><span class="line">  &quot;&quot;&quot;</span><br><span class="line">  thrift_spec = (</span><br><span class="line">    None, # 0</span><br><span class="line">    (1, TType.STRING, &#x27;host&#x27;, None, None, ), # 1</span><br><span class="line">    (2, TType.I32, &#x27;port&#x27;, None, None, ), # 2</span><br><span class="line">  )</span><br><span class="line">  </span><br><span class="line">  def __init__(self, host=None, port=None,):</span><br><span class="line">    self.host = host</span><br><span class="line">    self.port = port</span><br><span class="line"></span><br><span class="line">  def read(self, iprot):</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">  def write(self, oprot):</span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+
+<p>read&#x2F;write方法按照指定协议传输对象，所以需要一个TProtocol对象。</p>
+<p>TProtocol对象构造时需要传入一个TTransport对象，即传输层，所以还需要一个TTransport对象。</p>
+<p>由于数据已经准备完毕，要做的只是反序列化。</p>
+<p>好，TMemoryBuffer满足需求。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">class TMemoryBuffer(TTransportBase, CReadableTransport):</span><br><span class="line">  &quot;&quot;&quot;Wraps a cStringIO object as a TTransport.</span><br><span class="line"></span><br><span class="line">  NOTE: Unlike the C++ version of this class, you cannot write to it</span><br><span class="line">        then immediately read from it.  If you want to read from a</span><br><span class="line">        TMemoryBuffer, you must either pass a string to the constructor.</span><br><span class="line">  TODO(dreiss): Make this work like the C++ version.</span><br><span class="line">  &quot;&quot;&quot;</span><br><span class="line"></span><br><span class="line">  def __init__(self, value=None):</span><br><span class="line">    &quot;&quot;&quot;value -- a value to read from for stringio</span><br><span class="line"></span><br><span class="line">    If value is set, this will be a transport for reading,</span><br><span class="line">    otherwise, it is for writing&quot;&quot;&quot;</span><br><span class="line">    if value is not None:</span><br><span class="line">      self._buffer = StringIO(value)</span><br><span class="line">    else:</span><br><span class="line">      self._buffer = StringIO()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>TMemoryBuffer继承TTransportBase，也属于一种TTransport，内部封装了一个StringIO对象。</p>
+<p>利用目标数据构造一个TMemoryBuffer对象，然后调用read&#x2F;write方法实现反序列化和序列化。</p>
+<p>需要注意的是，Python在初始化TMemoryBuffer对象时必须指定value。</p>
+<p>序列化&#x2F;反序列化的示例代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">#! /usr/bin/env python</span><br><span class="line"># -*- coding: utf-8 -*-</span><br><span class="line"></span><br><span class="line">import sys</span><br><span class="line">sys.path.append(&#x27;gen-py&#x27;)</span><br><span class="line"></span><br><span class="line">from thrift.transport import TTransport</span><br><span class="line">from thrift.protocol import TBinaryProtocol</span><br><span class="line">from demo.ttypes import *</span><br><span class="line"></span><br><span class="line">def serialize(th_obj):</span><br><span class="line">    &quot;&quot;&quot; Serialize. </span><br><span class="line">    &quot;&quot;&quot;</span><br><span class="line">    tmembuf = TTransport.TMemoryBuffer()</span><br><span class="line">    tbinprot = TBinaryProtocol.TBinaryProtocol(tmembuf)</span><br><span class="line">    th_obj.write(tbinprot)</span><br><span class="line">    return tmembuf.getvalue()</span><br><span class="line"></span><br><span class="line">def deserialize(val, th_obj_type):</span><br><span class="line">    &quot;&quot;&quot; Deserialize. </span><br><span class="line">    &quot;&quot;&quot;</span><br><span class="line">    th_obj = th_obj_type()</span><br><span class="line">    tmembuf = TTransport.TMemoryBuffer(val)</span><br><span class="line">    tbinprot = TBinaryProtocol.TBinaryProtocol(tmembuf)</span><br><span class="line">    th_obj.read(tbinprot)</span><br><span class="line">    return th_obj</span><br><span class="line"></span><br><span class="line">if __name__ == &#x27;__main__&#x27;:</span><br><span class="line">    node1 = Node(&#x27;localhost&#x27;, 8000)</span><br><span class="line">    print &#x27;node1:&#x27;, node1</span><br><span class="line"></span><br><span class="line">    # modified</span><br><span class="line">    node1.host = &#x27;127.0.0.1&#x27;</span><br><span class="line">    node1.port = 9000</span><br><span class="line"></span><br><span class="line">    val = serialize(node1)</span><br><span class="line">    node2 = deserialize(val, Node)</span><br><span class="line">    print &#x27;node2:&#x27;, node2</span><br></pre></td></tr></table></figure>
+
+<p>输出结果：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">node1: Node(host=&#x27;localhost&#x27;, port=8000)</span><br><span class="line">node2: Node(host=&#x27;127.0.0.1&#x27;, port=9000)</span><br></pre></td></tr></table></figure>
+
+<h2 id="特别鸣谢"><a href="#特别鸣谢" class="headerlink" title="特别鸣谢"></a>特别鸣谢</h2><p><a href="http://caosiyang.github.io/2016/11/25/thrfit-serialize-and-deserialize/">参考链接</a></p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Thrift</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SpringBoot学习6之Logback日志导入mongodb</title>
+    <url>/2016/12/16/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/</url>
+    <content><![CDATA[<h1 id="SpringBoot学习6之Logback日志导入mongodb"><a href="#SpringBoot学习6之Logback日志导入mongodb" class="headerlink" title="SpringBoot学习6之Logback日志导入mongodb"></a>SpringBoot学习6之Logback日志导入mongodb</h1><p>正如前文所说，springboot自带logback作为其日志新系统，但是在实际工作中，我们常常需要对日志进行管理或分析，如果只是单纯的将日志导入文本文件，则在查询时操作过于繁琐，如果将其导入mysql等关系型数据库进行存储，又太影响系统性能，同时由于Mysql其结构化的信息存储结构，导致在存储时不够灵活。因此，本文在此考虑将springboot系统中产出的日志(logback) 存入mongodb中。</p>
+<span id="more"></span>
+
+<h2 id="实现步骤"><a href="#实现步骤" class="headerlink" title="实现步骤"></a>实现步骤</h2><h4 id="1-添加依赖"><a href="#1-添加依赖" class="headerlink" title="1. 添加依赖"></a>1. 添加依赖</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>ch.qos.logback<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>logback-core<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.9.28<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>ch.qos.logback<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>logback-classic<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>0.9.28<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongo-java-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.4.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-在项目资源文件下src-x2F-main-x2F-resources下添加logback-xml"><a href="#2-在项目资源文件下src-x2F-main-x2F-resources下添加logback-xml" class="headerlink" title="2. 在项目资源文件下src&#x2F;main&#x2F;resources下添加logback.xml"></a>2. 在项目资源文件下src&#x2F;main&#x2F;resources下添加logback.xml</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version=<span class="string">&quot;1.0&quot;</span> encoding=<span class="string">&quot;UTF-8&quot;</span>?&gt;</span></span><br><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">xml</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">appender</span> <span class="attr">name</span>=<span class="string">&quot;STDOUT&quot;</span> <span class="attr">class</span>=<span class="string">&quot;ch.qos.logback.core.ConsoleAppender&quot;</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">encoder</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">charset</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">charset</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">pattern</span>&gt;</span>%d [%thread] %-5level %logger&#123;68&#125; %line - logId[[%X&#123;client&#125;][%X&#123;request_id&#125;]] - %msg%n<span class="tag">&lt;/<span class="name">pattern</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">encoder</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">appender</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="tag">&lt;<span class="name">appender</span> <span class="attr">name</span>=<span class="string">&quot;MONGODB&quot;</span> <span class="attr">class</span>=<span class="string">&quot;SpringBoot.SpringBoot.log.MongoDBAppender&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">appender</span>&gt;</span></span><br><span class="line"></span><br><span class="line">     <span class="tag">&lt;<span class="name">root</span> <span class="attr">level</span>=<span class="string">&quot;INFO&quot;</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">appender-ref</span> <span class="attr">ref</span>=<span class="string">&quot;STDOUT&quot;</span> /&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">appender-ref</span> <span class="attr">ref</span>=<span class="string">&quot;MONGODB&quot;</span> /&gt;</span></span><br><span class="line">     <span class="tag">&lt;/<span class="name">root</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>上文中分别配置了mongodb的appender, 并起名为MONGODB，并启用</p>
+<h4 id="3-在项目Springboot-Springboot包下创建类MongoDBAppender"><a href="#3-在项目Springboot-Springboot包下创建类MongoDBAppender" class="headerlink" title="3. 在项目Springboot.Springboot包下创建类MongoDBAppender"></a>3. 在项目Springboot.Springboot包下创建类MongoDBAppender</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MongoDBAppender</span> <span class="keyword">extends</span> <span class="title class_">UnsynchronizedAppenderBase</span>&lt;LoggingEvent&gt; &#123;</span><br><span class="line">    <span class="keyword">private</span> MongoClient  mongo;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">dbHost</span> <span class="operator">=</span> <span class="string">&quot;localhost&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> <span class="variable">dbPort</span> <span class="operator">=</span> <span class="number">27017</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">dbName</span> <span class="operator">=</span> <span class="string">&quot;logging&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="type">String</span> <span class="variable">colName</span> <span class="operator">=</span> <span class="string">&quot;logs&quot;</span>;</span><br><span class="line">    <span class="keyword">private</span> MongoCollection&lt;Document&gt; _collection;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            mongo = <span class="keyword">new</span> <span class="title class_">MongoClient</span> (dbHost, dbPort);</span><br><span class="line">            <span class="type">MongoDatabase</span>  <span class="variable">db</span> <span class="operator">=</span> mongo.getDatabase(dbName);</span><br><span class="line">            _collection = db.getCollection(colName);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            addStatus(<span class="keyword">new</span> <span class="title class_">ErrorStatus</span>(<span class="string">&quot;Failed to initialize MondoDB&quot;</span>, <span class="built_in">this</span>, e));</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">super</span>.start();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbHost</span><span class="params">(String dbHost)</span> &#123;</span><br><span class="line">        dbHost = <span class="built_in">this</span>.dbHost;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbName</span><span class="params">(String dbName)</span> &#123;</span><br><span class="line">        dbName = <span class="built_in">this</span>.dbName;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setDbPort</span><span class="params">(<span class="type">int</span> dbPort)</span> &#123;</span><br><span class="line">        dbPort = <span class="built_in">this</span>.dbPort;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">stop</span><span class="params">()</span> &#123;</span><br><span class="line">        mongo.close();</span><br><span class="line">        <span class="built_in">super</span>.stop();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">append</span><span class="params">(LoggingEvent e)</span> &#123;</span><br><span class="line">        <span class="type">Document</span> <span class="variable">document</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Document</span>().</span><br><span class="line">                append(<span class="string">&quot;ts&quot;</span>, <span class="keyword">new</span> <span class="title class_">Date</span>(e.getTimeStamp())).</span><br><span class="line">                append(<span class="string">&quot;msg&quot;</span>, e.getFormattedMessage()).</span><br><span class="line">                append(<span class="string">&quot;level&quot;</span>, e.getLevel().toString()).</span><br><span class="line">                append(<span class="string">&quot;logger&quot;</span>, e.getLoggerName()).</span><br><span class="line">                append(<span class="string">&quot;thread&quot;</span>, e.getThreadName());</span><br><span class="line">        <span class="keyword">if</span>(e.hasCallerData()) &#123;</span><br><span class="line">            <span class="type">StackTraceElement</span> <span class="variable">st</span> <span class="operator">=</span> e.getCallerData()[<span class="number">0</span>];</span><br><span class="line">            <span class="type">String</span> <span class="variable">callerData</span> <span class="operator">=</span> String.format(<span class="string">&quot;%s.%s:%d&quot;</span>, st.getClassName(), st.getMethodName(), st.getLineNumber());</span><br><span class="line">            document.append(<span class="string">&quot;caller&quot;</span>, callerData);</span><br><span class="line">        &#125;</span><br><span class="line">        _collection.insertOne(document);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-启动Mongodb服务器，运行项目"><a href="#4-启动Mongodb服务器，运行项目" class="headerlink" title="4. 启动Mongodb服务器，运行项目"></a>4. 启动Mongodb服务器，运行项目</h4><p><img src="/img/SpringBoot%E5%AD%A6%E4%B9%A06%E4%B9%8BLogback%E6%97%A5%E5%BF%97%E5%AF%BC%E5%85%A5mongodb/springboot1.png"></p>
+<p>访问数据库发现，已经成功将日志插入</p>
+<h2 id="有待解决问题"><a href="#有待解决问题" class="headerlink" title="有待解决问题"></a>有待解决问题</h2><ol>
+<li>系统启动速度巨慢无比，有待解决</li>
+<li>有关数据库配置的问题，可以使用springboot的文件配置标签进行配置，将相关信息统一放在application.yml文件中，这样避免将数据库配置信息直接写在代码中，降低代码耦合性（具体详情请查阅<a href="https://darylliu.github.io/2016/10/22/SpringBoot%E5%AD%A6%E4%B9%A02%E4%B9%8B%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6/#more">SpringBoot学习2之配置文件</a>）</li>
+</ol>
+<h2 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h2><p>为了解决以上出现的两个问题，本人通过调研一些资料发现了解决办法，但是并没有弄清具体问题出现的原因。</p>
+<h3 id="问题1：启动速度慢"><a href="#问题1：启动速度慢" class="headerlink" title="问题1：启动速度慢"></a>问题1：启动速度慢</h3><p>因为之前调用Mongodb是自己添加的java驱动，实际上springboot有自己内置的mongodb接口，可以直接使用， 我们使用这套方法，执行效率几乎不受任何影响</p>
+<h4 id="1-替换依赖，将之前的依赖"><a href="#1-替换依赖，将之前的依赖" class="headerlink" title="1.	替换依赖，将之前的依赖"></a>1.	替换依赖，将之前的依赖</h4><figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongo-java-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.4.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>替换成</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-data-mongodb<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="2-添加实体类"><a href="#2-添加实体类" class="headerlink" title="2.	添加实体类"></a>2.	添加实体类</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyLog</span> &#123;</span><br><span class="line">    <span class="meta">@Id</span></span><br><span class="line">    <span class="keyword">private</span> String id;</span><br><span class="line">    <span class="keyword">private</span> Date ts;</span><br><span class="line">    <span class="keyword">private</span> String level;</span><br><span class="line">    <span class="keyword">private</span> String msg;</span><br><span class="line">    <span class="keyword">private</span> String thread;</span><br><span class="line">    </span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getId</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> id;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setId</span><span class="params">(String id)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.id = id;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> Date <span class="title function_">getTs</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> ts;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setTs</span><span class="params">(Date date)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.ts = date;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getLevel</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> level;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setLevel</span><span class="params">(String level)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.level = level;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getMsg</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> msg;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setMsg</span><span class="params">(String msg)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.msg = msg;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> String <span class="title function_">getThread</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> thread;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setThread</span><span class="params">(String thread)</span> &#123;</span><br><span class="line">		<span class="built_in">this</span>.thread = thread;</span><br><span class="line">	&#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>@Id  该标签对应Mongodb中的_id</p>
+<h4 id="3-添加数据访问接口"><a href="#3-添加数据访问接口" class="headerlink" title="3. 添加数据访问接口"></a>3. 添加数据访问接口</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">interface</span> <span class="title class_">LogRepository</span> <span class="keyword">extends</span> <span class="title class_">MongoRepository</span>&lt;MyLog, String&gt; &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="4-修改appender类"><a href="#4-修改appender类" class="headerlink" title="4.	修改appender类"></a>4.	修改appender类</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MongoDBAppender</span> <span class="keyword">extends</span> <span class="title class_">UnsynchronizedAppenderBase</span>&lt;LoggingEvent&gt;  <span class="keyword">implements</span> <span class="title class_">ApplicationContextAware</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> LogRepository logRepository;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">start</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">super</span>.start();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">stop</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">super</span>.stop();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> <span class="keyword">void</span> <span class="title function_">append</span><span class="params">(LoggingEvent e)</span> &#123;</span><br><span class="line"></span><br><span class="line">        <span class="type">MyLog</span> <span class="variable">myLog</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MyLog</span>();</span><br><span class="line">        myLog.setLevel(e.getLevel().toString());</span><br><span class="line">        myLog.setMsg(e.getFormattedMessage());</span><br><span class="line">        myLog.setThread(e.getThreadName());</span><br><span class="line">        myLog.setTs(<span class="keyword">new</span> <span class="title class_">Date</span>(e.getTimeStamp()));</span><br><span class="line">        logRepository.save(myLog);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setApplicationContext</span><span class="params">(ApplicationContext applicationContext)</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (applicationContext.getAutowireCapableBeanFactory().getBean(LogRepository.class) != <span class="literal">null</span>) &#123;</span><br><span class="line">        	logRepository = (LogRepository) applicationContext.getAutowireCapableBeanFactory().getBean(LogRepository.class);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有的人看到这里可能疑惑了，为什么不直接使用@Autowired注解，直接将LogRepository注入到代码里，而非要使用实现ApplicationContextAware 接口的方法，重写public void setApplicationContext(ApplicationContext applicationContext) 手动注入呢?</p>
+<p>这里本人遇到了一个坑，刚开始确实采用了@Autowired方法尝试注入，后来发现在日志读取过程中，logRepository一直是null,后来经过调查发现，**<font color = red>logback 的appender 在spring加载类之前创建，所以也即是说，在spring加载类之前该类已经投入使用，所以没有办法注入logRepository</font>**</p>
+<p>为了解决这个问题，只能“手动”注入了，将其声明为静态变量，并采用懒加载的方式进行加载。</p>
+<h3 id="问题2：数据库信息配置"><a href="#问题2：数据库信息配置" class="headerlink" title="问题2：数据库信息配置"></a>问题2：数据库信息配置</h3><p>在application.yml中配置如下即可</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">spring:</span><br><span class="line">  data:</span><br><span class="line">    mongodb:</span><br><span class="line">      uri: mongodb://localhost:27017/logging</span><br></pre></td></tr></table></figure>
+
+<p>这里也可以使用带密码形式的设置</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">spring:</span><br><span class="line">  data:</span><br><span class="line">    mongodb:</span><br><span class="line">      uri: mongodb://username:password@localhost:27017/logging</span><br></pre></td></tr></table></figure>
+
+<p>但是由于Mongdb进入3.0版本后更改了其默认认证方式，而springboot依然停留在老版本，所以虽然账号密码都输入正确，但是依然无法登陆成功。<br>在这里我们可以修改mongodb的默认认证方式<br>解决办法参考了解<br><a href="http://blog.csdn.net/wlzx120/article/details/52311777">http://blog.csdn.net/wlzx120/article/details/52311777</a></p>
+]]></content>
+      <categories>
+        <category>专题</category>
+      </categories>
+      <tags>
+        <tag>SpringBoot</tag>
+        <tag>Logback</tag>
+        <tag>mongodb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Windows下pip安装以及virtualenv环境搭建</title>
+    <url>/2015/01/16/Windows%E4%B8%8Bpip%E5%AE%89%E8%A3%85%E4%BB%A5%E5%8F%8Avirtualenv%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[<h1 id="Windows下pip安装以及virtualenv环境搭建"><a href="#Windows下pip安装以及virtualenv环境搭建" class="headerlink" title="Windows下pip安装以及virtualenv环境搭建"></a>Windows下pip安装以及virtualenv环境搭建</h1><ol>
+<li>确保已安装python环境</li>
+<li>进入python的官网下载工具，网址如下：<a href="https://pypi.python.org/pypi/setuptools">https://pypi.python.org/pypi/setuptools</a></li>
+</ol>
+<span id="more"></span>
+
+<p><img src="/img/Windows%E4%B8%8Bpip%E5%AE%89%E8%A3%85%E4%BB%A5%E5%8F%8Avirtualenv%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/windows1.png"></p>
+<ol start="3">
+<li><p>找到ez_setup.py，点击下载，或者点击将其中内容进行复制，在本地创建文件ez_setup.py，将内容粘贴进去。</p>
+</li>
+<li><p>双击运行下载好的文件，运行成功后，进入Python安装目录下Scripts文件夹下，发现easy_install以及pip相关文件已正常添加。</p>
+</li>
+</ol>
+<p><img src="/img/Windows%E4%B8%8Bpip%E5%AE%89%E8%A3%85%E4%BB%A5%E5%8F%8Avirtualenv%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/windows2.png"></p>
+<ol start="5">
+<li><p>为了方便在cmd下使用常用命令，将Scripts文件夹路径添加到环境变量中，假设你在缺省路径安装了 Python 2.7 ，那么就应该添加如下内容:</p>
+<p> ;C:\Python27\Scripts</p>
+</li>
+<li><p>至此pip&#x2F;easy_install安装完毕。</p>
+</li>
+<li><p>打开cmd窗口，切换到合适路径下，输入命令:</p>
+<p> pip install virtualenv </p>
+</li>
+<li><p>安装完毕后发现Scripts目录下，virtualenv相关文件已正常添加</p>
+</li>
+</ol>
+<p><img src="/img/Windows%E4%B8%8Bpip%E5%AE%89%E8%A3%85%E4%BB%A5%E5%8F%8Avirtualenv%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA/windows3.png"></p>
+<ol start="9">
+<li><p>至此全部环境搭建成功~</p>
+</li>
+<li><p>进入一个希望创建虚拟Python环境的文件夹下，输入命令：</p>
+<p>virtualenv venv</p>
+</li>
+</ol>
+<p>cmd 的当前目录下面多了一个 venv 文件夹,这个文件夹保存着当前Python虚拟环境。</p>
+<ol start="11">
+<li><p>virtualenv命令使用</p>
+<p>开启：</p>
+<pre><code>\venv\Scripts\activate
+</code></pre>
+<p>关闭：</p>
+<pre><code>\venv\Scripts\deactivate
+</code></pre>
+<p>查看当前虚拟环境配置信息</p>
+<pre><code> \venv\Scripts\activate
+ pip list
+</code></pre>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Python</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>hexo个人next主题博客接入谷歌广告</title>
+    <url>/2019/04/12/hexo%E4%B8%AA%E4%BA%BAnext%E4%B8%BB%E9%A2%98%E5%8D%9A%E5%AE%A2%E6%8E%A5%E5%85%A5%E8%B0%B7%E6%AD%8C%E5%B9%BF%E5%91%8A/</url>
+    <content><![CDATA[<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>个人博客搭了大概也有大半年的时间，陆陆续续更新了一些文章，虽然每天整个网站的浏览量不是特别高，但是也希望能够引入网站的流量变现（蚊子腿再小也是肉啊…），于是自己查阅了相关的资料，整理了一份完整的，接入谷歌广告联盟google adsense的一套完整流程，供大家参考～</p>
+<span id="more"></span>
+
+<h2 id="准备环境"><a href="#准备环境" class="headerlink" title="准备环境"></a>准备环境</h2><ul>
+<li>使用hexo的next主题搭建博客</li>
+<li>已翻墙，可以登录google adsense网站(本人是在<a href="https://banwagong.cn/">搬瓦工</a>上购买了一年的服务器，自己搭了了一套ShadowSocks环境)</li>
+</ul>
+<h2 id="注册账号"><a href="#注册账号" class="headerlink" title="注册账号"></a>注册账号</h2><p>注册账号流程比较简单，入口在这里：<a href="https://www.google.com/adsense/">Google Adsense</a></p>
+<h2 id="添加广告代码"><a href="#添加广告代码" class="headerlink" title="添加广告代码"></a>添加广告代码</h2><p>注册账号完成之后，需要将谷歌提供给你的一份代码添加到你网站的中的	&lt;head&gt;标记中，在你添加完成之后，点击确认，谷歌会到你的网站上进行核查和验收。</p>
+<p>对于使用hexo的next主题博客的同学，只要将谷歌提供的代码</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;script async src=&quot;http://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js&quot;&gt;&lt;/script&gt;</span><br><span class="line">&lt;script&gt;</span><br><span class="line">(adsbygoogle = window.adsbygoogle || []).push(&#123;</span><br><span class="line">google_ad_client: &quot;ca-pub-123456789&quot;,</span><br><span class="line">enable_page_level_ads: true</span><br><span class="line">&#125;);</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+<p>放到*\themes\next\layout_partials\head.swig * 任意一个位置(本人放在了最后)即可，在给谷歌确认之前，可以自己先使用浏览器进行验证：<br>打开自己的网站，点击右键，查看源码，搜索一下是否已经成功添加上述代码。<br>确认无误之后，在google adsense上点击确认，开始验证，一般没问题的话几分钟就会出结果，有问题的话要等待一段时间。</p>
+<p>根据我个人申请的流程，总结了一些经验，供大家参考：</p>
+<ol>
+<li>网站文章不要太少，至少大于10篇博客以上。</li>
+<li>网站上架半年以上，如果是新申请的网站，一般不容易过审。(这里建议大家有接入google adsense的新站长，等网站稍微成熟点再去申请，本人第一次申请就因为建站时间过短，还不到3个月被拒)</li>
+</ol>
+<h2 id="个性化配置广告位"><a href="#个性化配置广告位" class="headerlink" title="个性化配置广告位"></a>个性化配置广告位</h2><p>待通过审核之后，就可以开始考虑在自己的网站上进行广告位置的筛选和设计了，目前google adsense主要提供了自动广告和广告单元两种形式的广告添加方式。</p>
+<h3 id="自动广告"><a href="#自动广告" class="headerlink" title="自动广告"></a>自动广告</h3><p>自动广告是google adsense近来提供的一种广告形式，它能够通过分析你的博客布局结构，自定义的在你的网站中插入合适的广告，无论是内容，还是广告尺寸，都是完全契合网站内容本身的，算是一种比较高质量的广告。</p>
+<p>但是根据我的使用经验，这种广告投放的几率比较小，往往好几篇文章或页面才会投放一个广告内容，效率比较低(唯一的好处是，如果你的网站支持移动端查看的话，会自动投放移动端自适应的广告)</p>
+<p>具体的代码插入方法，其实就是上述的用来检验的代码，一旦上述代码审核通过，其实已经自动接入了google adsense的自动广告。</p>
+<h3 id="广告单元"><a href="#广告单元" class="headerlink" title="广告单元"></a>广告单元</h3><p>为了能够最高效的利用自己博客的广告位，adsense还提供了三种固定广告位</p>
+<ol>
+<li>文字广告和展示广告(即侧边栏，评论区之类的固定广告位)</li>
+<li>信息流广告(插入在信息流内容的广告位置)</li>
+<li>文章内嵌广告(主要是插入在每篇文章内部的开始，中间，结尾部分，展示次数比较多，强烈推荐)</li>
+</ol>
+<p>由于本人的是博客网站，所以第二种信息流广告没有投入使用，这里主要使用了第一种和第三种。</p>
+<p>具体的操作流程是，在网站上，选择广告单元-&gt;新建广告位-&gt;选择对应的广告类型-&gt;生成对应的广告代码。</p>
+<p>这里，本人根据个人经验，提供几种针对hexo的next主题广告代码位置的插入。</p>
+<ul>
+<li>插入评论区：将代码插入*\themes\next\layout_partials\comments.swig *中的末尾即可。 </li>
+<li>插入侧边栏：将代码插入*\themes\next\layout_macro\sidebar.swig *文件中&lt;div class&#x3D;”sidebar-inner”&gt; &lt;&#x2F;div&gt;的最下侧即可</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;div class=&quot;sidebar-inner&quot;&gt;</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line">      &#123;% if theme.sidebar.b2t %&#125;</span><br><span class="line">        &lt;div class=&quot;back-to-top&quot;&gt;</span><br><span class="line">          &lt;i class=&quot;fa fa-arrow-up&quot;&gt;&lt;/i&gt;</span><br><span class="line">          &#123;% if theme.sidebar.scrollpercent %&#125;</span><br><span class="line">            &lt;span id=&quot;scrollpercent&quot;&gt;&lt;span&gt;0&lt;/span&gt;%&lt;/span&gt;</span><br><span class="line">          &#123;% endif %&#125;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">      &#123;% endif %&#125;</span><br><span class="line">      &lt;script async src=&quot;//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js&quot;&gt;&lt;/script&gt;</span><br><span class="line">      &lt;!-- 侧边栏广告 --&gt;</span><br><span class="line">      &lt;ins class=&quot;adsbygoogle&quot;</span><br><span class="line">           style=&quot;display:block&quot;</span><br><span class="line">           data-ad-client=&quot;ca-pub-1219606132354870&quot;</span><br><span class="line">           data-ad-slot=&quot;1362622054&quot;</span><br><span class="line">           data-ad-format=&quot;auto&quot;</span><br><span class="line">           data-full-width-responsive=&quot;true&quot;&gt;&lt;/ins&gt;</span><br><span class="line">      &lt;script&gt;</span><br><span class="line">      (adsbygoogle = window.adsbygoogle || []).push(&#123;&#125;);</span><br><span class="line">      &lt;/script&gt;</span><br><span class="line">&lt;/div&gt;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>插入文章头部：在*\themes\next\layout_custom\post.swig * 目录下，新建google_adsense.swig，并将google提供的广告代码放入其中，然后将</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&#123;% include &#x27;../_custom/google_adsense.swig&#x27; %&#125;</span><br></pre></td></tr></table></figure>
+
+<p>插入*\themes\next\layout_macro\post.swig *文件中</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;div class=&quot;post-body&#123;% if theme.han %&#125; han-init-context&#123;% endif %&#125;&quot; itemprop=&quot;articleBody&quot;&gt;</span><br><span class="line">      &#123;# Gallery support #&#125;</span><br><span class="line">      &#123;% if post.photos and post.photos.length %&#125;</span><br><span class="line">        &lt;div class=&quot;post-gallery&quot; itemscope itemtype=&quot;http://schema.org/ImageGallery&quot;&gt;</span><br><span class="line">          &#123;% set COLUMN_NUMBER = 3 %&#125;</span><br><span class="line">          &#123;% for photo in post.photos %&#125;</span><br><span class="line">            &#123;% if loop.index0 % COLUMN_NUMBER === 0 %&#125;&lt;div class=&quot;post-gallery-row&quot;&gt;&#123;% endif %&#125;</span><br><span class="line">              &lt;a class=&quot;post-gallery-img fancybox&quot;</span><br><span class="line">                 href=&quot;&#123;&#123; url_for(photo) &#125;&#125;&quot; rel=&quot;gallery_&#123;&#123; post._id &#125;&#125;&quot;</span><br><span class="line">                 itemscope itemtype=&quot;http://schema.org/ImageObject&quot; itemprop=&quot;url&quot;&gt;</span><br><span class="line">                &lt;img src=&quot;&#123;&#123; url_for(photo) &#125;&#125;&quot; itemprop=&quot;contentUrl&quot;/&gt;</span><br><span class="line">              &lt;/a&gt;</span><br><span class="line">            &#123;% if loop.index0 % COLUMN_NUMBER === 2 %&#125;&lt;/div&gt;&#123;% endif %&#125;</span><br><span class="line">          &#123;% endfor %&#125;</span><br><span class="line"></span><br><span class="line">          &#123;# Append end tag for `post-gallery-row` when (photos size mod COLUMN_NUMBER) is less than COLUMN_NUMBER #&#125;</span><br><span class="line">          &#123;% if post.photos.length % COLUMN_NUMBER &gt; 0 %&#125;&lt;/div&gt;&#123;% endif %&#125;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">      &#123;% endif %&#125;</span><br><span class="line"></span><br><span class="line">      &#123;% if is_index %&#125;</span><br><span class="line">        &#123;% if post.description and theme.excerpt_description %&#125;</span><br><span class="line">          &#123;&#123; post.description &#125;&#125;</span><br><span class="line">          &lt;!--noindex--&gt;</span><br><span class="line">          &lt;div class=&quot;post-button text-center&quot;&gt;</span><br><span class="line">            &lt;a class=&quot;btn&quot; href=&quot;&#123;&#123; url_for(post.path) &#125;&#125;&quot;&gt;</span><br><span class="line">              &#123;&#123; __(&#x27;post.read_more&#x27;) &#125;&#125; &amp;raquo;</span><br><span class="line">            &lt;/a&gt;</span><br><span class="line">          &lt;/div&gt;</span><br><span class="line">          &lt;!--/noindex--&gt;</span><br><span class="line">        &#123;% elif post.excerpt  %&#125;</span><br><span class="line">          &#123;&#123; post.excerpt &#125;&#125;</span><br><span class="line">          &lt;!--noindex--&gt;</span><br><span class="line">          &lt;div class=&quot;post-button text-center&quot;&gt;</span><br><span class="line">            &lt;a class=&quot;btn&quot; href=&quot;&#123;&#123; url_for(post.path) &#125;&#125;&#123;% if theme.scroll_to_more %&#125;#&#123;&#123; __(&#x27;post.more&#x27;) &#125;&#125;&#123;% endif %&#125;&quot; rel=&quot;contents&quot;&gt;</span><br><span class="line">              &#123;&#123; __(&#x27;post.read_more&#x27;) &#125;&#125; &amp;raquo;</span><br><span class="line">            &lt;/a&gt;</span><br><span class="line">          &lt;/div&gt;</span><br><span class="line">          &lt;!--/noindex--&gt;</span><br><span class="line">        &#123;% elif theme.auto_excerpt.enable %&#125;</span><br><span class="line">          &#123;% set content = post.content | striptags %&#125;</span><br><span class="line">          &#123;&#123; content.substring(0, theme.auto_excerpt.length) &#125;&#125;</span><br><span class="line">          &#123;% if content.length &gt; theme.auto_excerpt.length %&#125;...&#123;% endif %&#125;</span><br><span class="line">          &lt;!--noindex--&gt;</span><br><span class="line">          &lt;div class=&quot;post-button text-center&quot;&gt;</span><br><span class="line">            &lt;a class=&quot;btn&quot; href=&quot;&#123;&#123; url_for(post.path) &#125;&#125;&#123;% if theme.scroll_to_more %&#125;#&#123;&#123; __(&#x27;post.more&#x27;) &#125;&#125;&#123;% endif %&#125;&quot; rel=&quot;contents&quot;&gt;</span><br><span class="line">              &#123;&#123; __(&#x27;post.read_more&#x27;) &#125;&#125; &amp;raquo;</span><br><span class="line">            &lt;/a&gt;</span><br><span class="line">          &lt;/div&gt;</span><br><span class="line">          &lt;!--/noindex--&gt;</span><br><span class="line">        &#123;% else %&#125;</span><br><span class="line">          &#123;% if post.type === &#x27;picture&#x27; %&#125;</span><br><span class="line">            &lt;a href=&quot;&#123;&#123; url_for(post.path) &#125;&#125;&quot;&gt;&#123;&#123; post.content &#125;&#125;&lt;/a&gt;</span><br><span class="line">          &#123;% else %&#125;</span><br><span class="line">            &#123;&#123; post.content &#125;&#125;</span><br><span class="line">          &#123;% endif %&#125;</span><br><span class="line">        &#123;% endif %&#125;</span><br><span class="line">      &#123;% else %&#125;</span><br><span class="line">        &#123;% include &#x27;../_custom/google_adsense.swig&#x27; %&#125;</span><br><span class="line">        &#123;&#123; post.content &#125;&#125;</span><br><span class="line">      &#123;% endif  %&#125;</span><br><span class="line">&lt;/div&gt;</span><br></pre></td></tr></table></figure>
+
+<p>注意，这里不要搞错，误插入到*\themes\next\layout\post.swig *文件中了，这样不仅仅会导致每篇文章里存在广告，在首页的列表中，每篇文章同样也都会带上广告，导致首页一次刷出来N个广告，影响网站布局和设计。</p>
+<h2 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h2><p>在成功接入AdSense广告之后，并不算结束，Google会根据几种方式和数据判断广告点击是否作弊，从而注销你的账号。所以不要心存侥幸心理，好好发原创文章，提高网站的质量才是王道。</p>
+<ol>
+<li>作弊广告点击者的IP地址与你Adsense账户登录IP地址相同</li>
+<li>作弊广告点击的CTR数据太高</li>
+<li>作弊广告点击者的IP地址来自同一个地理区域</li>
+<li>根据Cookies判断作弊Adsense广告点击</li>
+<li>作弊广告点击者页面停留时间太短</li>
+<li>直接访问者的广告点击率过高</li>
+<li>流量小但广告点击率高</li>
+<li>在网页上用文字提示请求鼓动点击广告</li>
+</ol>
+<h2 id="说在最后"><a href="#说在最后" class="headerlink" title="说在最后"></a>说在最后</h2><p>现在通过adsense本身能赚到的收入本身并不高，尤其是博客类的网站更是如此，但是既然大家愿意花时间和精力去搭建个人博客，除了钱以外，肯定还有其他的目的，希望大家不要舍本逐末，忘记了自己搭建博客的初衷，毕竟广告收入这个事情，有当然好，没有也不用气馁，尽力就好～</p>
+]]></content>
+      <categories>
+        <category>杂谈</category>
+      </categories>
+      <tags>
+        <tag>hexo</tag>
+        <tag>next</tag>
+        <tag>adsense</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>maven仓库加载问题</title>
+    <url>/2016/03/12/maven%E4%BB%93%E5%BA%93%E5%8A%A0%E8%BD%BD%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h1 id="maven仓库加载问题"><a href="#maven仓库加载问题" class="headerlink" title="maven仓库加载问题"></a>maven仓库加载问题</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>maven是当前非常流行的项目管理工具，各大公司几乎都在使用，然而本人在使用maven的过程中总是或多或少遇到一些问题，特此整理并记录下来，方便以后再次遇到这些问题时能够及时解决。</p>
+<span id="more"></span>
+
+<h2 id="maven仓库介绍"><a href="#maven仓库介绍" class="headerlink" title="maven仓库介绍"></a>maven仓库介绍</h2><h3 id="本地仓库"><a href="#本地仓库" class="headerlink" title="本地仓库"></a>本地仓库</h3><p>本地仓库在本人看来就是一个类似于缓存的地方，当构建新的项目时，根据pom.xml文件中的依赖去远程仓库下载jar包，然后将其存放在本地仓库，当下次再去构建项目时，首先会到本地仓库中查找是否已存在相关依赖，如果有则直接添加依赖，如果没有则再去远程仓库下载。</p>
+<p>本地仓库的路径</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">用户路径/.m2/repository</span><br></pre></td></tr></table></figure>
+
+<p>该路径可以通过maven的配置文件setting.xml进行修改</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;settings&gt;</span><br><span class="line">	&lt;localRepository&gt;新的本地仓库地址&lt;/localRepository&gt;  </span><br><span class="line">&lt;/settings&gt; </span><br></pre></td></tr></table></figure>
+
+<h3 id="远程仓库"><a href="#远程仓库" class="headerlink" title="远程仓库"></a>远程仓库</h3><h4 id="中央仓库"><a href="#中央仓库" class="headerlink" title="中央仓库"></a>中央仓库</h4><p>中央仓库就是在安装maven默认的远程仓库，当构建新的项目时，会去该仓库地址进行下载相关依赖。该仓库是在maven的超级pom文件中进行配置。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;repositories&gt;</span><br><span class="line">	&lt;repository&gt;</span><br><span class="line">		&lt;id&gt;central&lt;/id&gt;</span><br><span class="line">		&lt;url&gt;http://repo1.maven.org/maven2&lt;/url&gt;</span><br><span class="line">	&lt;/repository&gt;</span><br><span class="line">&lt;/repositories&gt;</span><br></pre></td></tr></table></figure>
+
+<p>这里要记住的一点是中央仓库的id是<strong>central</strong>, url是<strong><a href="http://repo1.maven.org/maven2">http://repo1.maven.org/maven2</a></strong><br>这是一个国外的地址，下载的时候速度会比较慢。</p>
+<h4 id="私服"><a href="#私服" class="headerlink" title="私服"></a>私服</h4><p>假如你到了一个公司，参与到他们的项目中进行开发，他们内部往往也有一些jar包需要依赖，而这些依赖由于并未对外开放，放在了公司内部的局域网上，所以在中央仓库中肯定是找不到的，在这种情况下你不得不添加该局域网远程仓库的地址。</p>
+<p>在项目pom.xml文件中</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;repositories&gt;</span><br><span class="line">	&lt;repository&gt;</span><br><span class="line">		&lt;id&gt;公司仓库id&lt;/id&gt;</span><br><span class="line">		&lt;name&gt;公司仓库名称&lt;/name&gt;</span><br><span class="line">		&lt;url&gt;公司仓库地址&lt;/url&gt;</span><br><span class="line">		&lt;releases&gt;</span><br><span class="line">			&lt;enabled&gt;true&lt;/enabled&gt;</span><br><span class="line">		&lt;/releases&gt;</span><br><span class="line">		&lt;snapshots&gt;</span><br><span class="line">			&lt;enabled&gt;false&lt;/enabled&gt;</span><br><span class="line">		&lt;/snapshots&gt;</span><br><span class="line">	&lt;/repository&gt;</span><br><span class="line">&lt;/repositories&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="maven使用中的问题"><a href="#maven使用中的问题" class="headerlink" title="maven使用中的问题"></a>maven使用中的问题</h2><h3 id="1-速度太慢"><a href="#1-速度太慢" class="headerlink" title="1. 速度太慢"></a>1. 速度太慢</h3><p>正如前文所说，由于maven默认的中央仓库是国外的地址，由于某些原因，访问起来速度奇慢无比，如果加载的依赖比较少，还可以勉强使用，但是项目一旦稍微大点，则非常影响使用（本人深有体会），所以这里推荐使用镜像。</p>
+<p>使用国内的一些镜像仓库，可以在setting.xml中进行如下设置</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&lt;mirrors&gt;</span><br><span class="line">	&lt;mirror&gt;</span><br><span class="line">		&lt;id&gt;alimaven&lt;/id&gt;</span><br><span class="line">		&lt;name&gt;aliyun maven&lt;/name&gt;</span><br><span class="line">		&lt;url&gt;http://maven.aliyun.com/nexus/content/groups/public/&lt;/url&gt;</span><br><span class="line">		&lt;mirrorOf&gt;central&lt;/mirrorOf&gt;</span><br><span class="line">	&lt;/mirror&gt;</span><br><span class="line">&lt;/mirrors&gt;</span><br></pre></td></tr></table></figure>
+
+<p>其中的**<mirrorOf>central</mirrorOf>**意思是指对于所有访问central(默认中央仓库的id，前文有提到)的请求，都将被拦截，并从本镜像仓库寻找相关的依赖包返还给用户。</p>
+<p>在这里**<mirrorOf>central</mirrorOf>** 也可以写成**<mirrorOf>*</mirrorOf>**,表示的是对于所有的请求，都将被拦截。</p>
+<h3 id="2-Missing-artifact"><a href="#2-Missing-artifact" class="headerlink" title="2. Missing artifact"></a>2. Missing artifact</h3><p>问题  <strong>Cound not transfer artifact xxxxxxx……</strong></p>
+<p>同样是由于maven默认的中央仓库是国外的地址，导致在下载过程中网络不佳，经常出现一些超时或者其他问题，按说这种情况进行重试即可，然而实际会在本地仓库生成一份以lastUpdated结尾的文件。</p>
+<p>解决办法：打开~&#x2F;.m2&#x2F;repository文件夹，找到该artifact文件夹，删除，然后重新构建。<br>本人建议：由于经常会出现很多的这种错误，所以往往几次删除之内很难解决问题，所以本人在使用最初都是直接把repository文件夹整个的删除（太年轻），后来发现其实只要换成国内镜像，几乎就再也不会出现这个问题，推荐更换镜像。</p>
+<h2 id="maven仓库编译顺序"><a href="#maven仓库编译顺序" class="headerlink" title="maven仓库编译顺序"></a>maven仓库编译顺序</h2><p>本地仓库 &gt; pom中的repository &gt; mirror</p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>maven</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>从同步阻塞聊到Java三种IO方式</title>
+    <url>/2018/03/22/%E4%BB%8E%E5%90%8C%E6%AD%A5%E9%98%BB%E5%A1%9E%E8%81%8A%E5%88%B0Java%E4%B8%89%E7%A7%8DIO%E6%96%B9%E5%BC%8F/</url>
+    <content><![CDATA[<h1 id="从同步阻塞聊到Java三种IO方式"><a href="#从同步阻塞聊到Java三种IO方式" class="headerlink" title="从同步阻塞聊到Java三种IO方式"></a>从同步阻塞聊到Java三种IO方式</h1><p>对于刚刚成为程序猿不久的人，可能常常会被以下几个概念所混淆：<br>同步，异步，阻塞，非阻塞？以及从这几个概念中衍生出的几个概念，同步阻塞，同步非阻塞，异步阻塞，异步非阻塞？</p>
+<p>小编从网上查了一些资料，发现对于这些概念的解释，要么过于简单随性，以偏概全，要么过于底层，不利于初学者记忆，反而加深了混淆。</p>
+<p>今天小编特意从网上和书籍中收集的答案进行整理，抛砖引玉，跟大家简单聊聊这几个概念。</p>
+<span id="more"></span>
+
+<h2 id="快速理解"><a href="#快速理解" class="headerlink" title="快速理解"></a>快速理解</h2><p>首先，我们要先对这几个概念有一个直观的理解，对于初学者来说，你可以这样看待这几个概念：</p>
+<h3 id="阻塞非阻塞-指的是在客户端"><a href="#阻塞非阻塞-指的是在客户端" class="headerlink" title="阻塞非阻塞 指的是在客户端"></a>阻塞非阻塞 指的是在客户端</h3><p>阻塞: 意味着 客户端提出一个请求以后，在得到回应之前，只能等待<br>非阻塞: 意味着 客户端提出一个请求以后，在得到回应之前，客户端还可以做其他事情，可以继续提其他请求</p>
+<h3 id="同步异步-指的是服务器端"><a href="#同步异步-指的是服务器端" class="headerlink" title="同步异步 指的是服务器端"></a>同步异步 指的是服务器端</h3><p>同步：意味着 服务器接受一个请求后，在返回结果以前不能接受其他请求<br>异步：意味着 服务器接受一个请求后，尽管还没有返回结果，但是可以继续接受其他请求<br>这样的理解其实是过于以偏概全的，因为这只是消息通知场景中的解释，但是通过代入客户端，服务器端更加方便初学者理解，因此在这里，暂且先这样解释。</p>
+<h2 id="举个例子"><a href="#举个例子" class="headerlink" title="举个例子"></a>举个例子</h2><p>小明领着女朋友去超市购物，买了很多东西，当他走到收银员那里结账的时候，小明(客户端)发出了要求结账的讯息(请求)，收银员(服务器)会对他这一要求进行处理。此时有可能产生多种场景</p>
+<p>小明傻傻地等着收银员用计算器算出所有物品的总价，并准备付款。(同步阻塞)<br>小明觉得自己太傻了，于是一边和女朋友聊天，一边催促收银员快点计算出总价。(同步非阻塞)<br>小明傻傻地等着收银员的总价结果，收银员却把计算的工作交给计算机之后就去拿袋子帮忙装东西，直到计算机上出现了总价结果，收银员才继续回来完成收款工作。(异步阻塞)<br>小明觉得自己太傻了，于是一边和女朋友聊天，一边催出收银员快点计算出总价，而收银员却把计算的工作交给计算机之后就去拿袋子帮忙装东西，直到计算机上出现了总价结果，收银员才继续回来完成收款工作。(异步非阻塞)<br>此时的同步异步，指的是收银员是否在处理收款这一请求的过程中去做了其他的事情，这也导致了收款的结果是当时告诉了小明，还是之后又进行了额外的通知。</p>
+<p>而阻塞非阻塞，指的是小明是否在等待处理结果的过程中去做了其他的事情。</p>
+<p>那么因此，就能得出结论：</p>
+<p>同步和异步：关注的是被调用者是否会通过原调用通知调用者。换句话说，处理请求者是通过原调用将结果返回，还是通过其他方式将结果通知调用者。</p>
+<p>阻塞和非阻塞：关注的是调用者是否会一直等待被调用者的通知。换句话说，发出请求者是否会在等待过程中去做别的事情。</p>
+<h2 id="简单的记忆方法"><a href="#简单的记忆方法" class="headerlink" title="简单的记忆方法"></a>简单的记忆方法</h2><p>同步阻塞：A调用B，然后A一直等待B的返回；B执行完后通过原调用接口返回结果。<br>同步非阻塞：A调用B，然后A执行其他操作，隔段时间看看原调用接口是否有返回结果；B执行完后通过原调用接口返回结果。<br>异步阻塞：A调用B，然后A一直等待B的回调；B执行完后通过回调、状态等其他方式通知A结果。<br>异步非阻塞：A调用B，然后A继续做别的，不再搭理B；B执行完后通过回调、状态等其他方式通知A结果。</p>
+<h2 id="Java-中的BIO-NIO和AIO"><a href="#Java-中的BIO-NIO和AIO" class="headerlink" title="Java 中的BIO,NIO和AIO"></a>Java 中的BIO,NIO和AIO</h2><p>在Java中，同步异步，阻塞非阻塞的概念也应用到了很多方面，比如最常见，也是面试官经常考察的就是有关Java中几种IO方式。</p>
+<p>Java中IO的方式通常分为同步阻塞的BIO，同步非阻塞的NIO，异步非阻塞的AIO。</p>
+<h3 id="BIO同步阻塞"><a href="#BIO同步阻塞" class="headerlink" title="BIO同步阻塞"></a>BIO同步阻塞</h3><p>如果你还记得我们在学习程序设计语言之初，完成的socket编程，大概就会了解到BIO的基本工作原理。</p>
+<p>一个socket连接一个处理线程，这个线程负责相关数据传输操作，每个服务器需要多个这样的处理线程，然而这种情况下，当多个socket向服务器申请建立连接时，受限于操作系统所允许的最大线程数量的限制，服务器不能提供相应数量的处理线程，没有分配到处理线程的连接就会阻塞等待，所以BIO是阻塞的。</p>
+<p>又因为，当进行IO操作时，由Java自己本身处理IO的读写，所以是同步的。</p>
+<h3 id="NIO同步非阻塞"><a href="#NIO同步非阻塞" class="headerlink" title="NIO同步非阻塞"></a>NIO同步非阻塞</h3><p>在BIO的基础上，NIO作出了改进。考虑到每一个socket连接只有在部分时间才进行了数据传输，大多数时间都是空闲的，而在空闲的时间依然要占用线程，这就造成了浪费。</p>
+<p>当客户端的socket连接到服务器端时，不再是每个连接分配一个处理线程，而是服务器端会专门开辟一个”注册中心”统一对其进行管理。当检测到有IO事件请求发生的时候，服务器此时才启动一个处理线程对其进行处理，这种方法解决了因为线程数量的限制，导致socket接入阻塞的问题，因此是非阻塞的。</p>
+<h3 id="AIO异步非阻塞"><a href="#AIO异步非阻塞" class="headerlink" title="AIO异步非阻塞"></a>AIO异步非阻塞</h3><p>在NIO中，当Java对IO请求进行处理时，可能会需要对后端资源(比如数据库连接)进行等待，并发量小的时候还好，一旦并发量增大，则也会对服务器的性能造成影响，因此，有人提出了AIO的概念。</p>
+<p>与NIO不同的时，对于IO请求的处理，Java将其委托给了操作系统，不再阻塞等待，当操作系统完成了相应的IO处理之后，再去通知服务器，启动线程继续对结果进行处理。因此是异步的。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>总的来说，大家可以这样记忆：</p>
+<p>BIO是一个连接一个线程。(连接阻塞，Java处理IO同步)</p>
+<p>NIO是一个请求一个线程。(没有请求时，连接不占用线程，连接非阻塞，Java处理IO同步)</p>
+<p>AIO是一个有效请求一个线程。(连接非阻塞，Java处理IO委托给操作系统，异步进行处理)</p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Java</tag>
+        <tag>IO</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>初识：数据库事务隔离级别</title>
+    <url>/2018/03/22/%E5%88%9D%E8%AF%86%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/</url>
+    <content><![CDATA[<h1 id="初识：数据库事务隔离级别"><a href="#初识：数据库事务隔离级别" class="headerlink" title="初识：数据库事务隔离级别"></a>初识：数据库事务隔离级别</h1><p>学习数据库的时候常常会接触到事务, ACID等概念，那么到底什么是数据库的事务，数据库事务又具有哪些特点，和ACID有怎样的关系，事务的隔离级别又是做什么的呢？</p>
+<p><em>注：本文参考自&lt;&lt;从Paxos到ZooKeeper-分布式一致性原理和实践&gt;&gt;一书</em></p>
+<span id="more"></span>
+
+<h2 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h2><p>事务是由一系列对系统中数据进行访问与更新的操作所组成的一个程序执行逻辑单元，狭义上的事务特指数据库事务。</p>
+<p><em>举个例子来说，张三给李四转了1000元钱，那么在数据库操作时，就要先把张三的账户减去1000元，再把李四的账户加上1000元，两部分操作放在一起，才是一个完整的转账过程，也可称之为事务。</em></p>
+<h2 id="ACID"><a href="#ACID" class="headerlink" title="ACID"></a>ACID</h2><p>事务具有一定的特点，也就是我们常常所说的ACID。<br>事务的四个特性</p>
+<ol>
+<li><p>**原子性(Atomicity)**。事务包含的一系列操作要么全部成功，要么全部失败。一旦有一个操作失败，则将已经执行过的操作进行回滚撤销。<br><em>上述例子中，张三账户减去1000元，李四账户增加1000元两部分操作必须同时成功或失败，不能够出现张三减去了1000，但是李四并没有增加1000的情况。</em></p>
+</li>
+<li><p>**一致性(Consistency)**。这里的一致性指的是事务执行前后，数据库都处于一致性状态。<br><em>上述的例子中，无论怎么增加和减少，张三和李四两个人账户里的钱，加起来总数是不会发生改变的。</em></p>
+</li>
+<li><p>**持久性(Durability)**。一个事务一旦成功提交，那么它对数据库做出的改变是永久的。</p>
+</li>
+<li><p>**隔离性(Isolation)**。指并发环境中，事务之间是相互隔离，不可打扰的。</p>
+</li>
+</ol>
+<p>原子性和一致性，上述都已经进行了解释。持久性，顾名思义，对数据库的改变是永久的。<br>最后一个隔离性比较复杂，因为对事务之间进行隔离，隔离到什么程度比较合适呢？完全隔离的话，影响执行性能，完全不隔离的话，容易造成数据的不一致。<br>要解决这些问题，我们先来了解几个基本概念 ：<strong>脏读，不可重复读，幻读</strong></p>
+<h3 id="脏读：一个事务读取了另一个事务还未提交的数据。"><a href="#脏读：一个事务读取了另一个事务还未提交的数据。" class="headerlink" title="脏读：一个事务读取了另一个事务还未提交的数据。"></a>脏读：一个事务读取了另一个事务还未提交的数据。</h3><p>事务A和事务B同时执行，事务A在整个执行阶段，将某个数据项的值由1加到10，然后进行事务提交。在此过程中。事务B进行一次读取，可能看到(1，2，3，4，5，6，7，8，9，10)中的任意值。</p>
+<h3 id="不可重复读：指在一个事务内读取表中的某一行数据，多次读取结果不同。"><a href="#不可重复读：指在一个事务内读取表中的某一行数据，多次读取结果不同。" class="headerlink" title="不可重复读：指在一个事务内读取表中的某一行数据，多次读取结果不同。"></a>不可重复读：指在一个事务内读取表中的某一行数据，多次读取结果不同。</h3><p>如果不考虑脏读的情况，假设事务A，事务B，事务C同时执行，事务A在整个执行阶段，将某个数据项的值由1加到10，然后进行事务提交。在此过程中，事务B进行读取，只可能读取到1和最终值10。之后事务B并没有结束，事务C再次将该项的值由10加到20，然后进行事务提交。在此过程中，事务B再次进行读取，只可能读取到10和最终值20。因此事务B在执行过程中有可能两次读取结果不同。</p>
+<h3 id="幻读：指在一个事务内读取到了别的事务插入的数据，导致前后读取不一致。"><a href="#幻读：指在一个事务内读取到了别的事务插入的数据，导致前后读取不一致。" class="headerlink" title="幻读：指在一个事务内读取到了别的事务插入的数据，导致前后读取不一致。"></a>幻读：指在一个事务内读取到了别的事务插入的数据，导致前后读取不一致。</h3><p>如果不考虑脏读和不可重复读的情况，假设事务A对一个表中的某个数据项设置为1，这种修改涉及到表中的全部数据行，与此同时，事务B向表中插入一条新的数据且该数据项为2，那么此时操作事务A的用户就会发现表中有一条数据的该数据项居然不是1，好像发生了幻觉。</p>
+<p>在上述的例子上，不可重复读和幻读的区别就在于：<br>＋ 不可重复读：在同一事务中，两次读取同一数据，得到内容不同<br>＋ 幻读：同一事务中，用同样的操作读取两次，得到的记录数不相同</p>
+<p>为了解决以上这些问题，保证事务与事务之间的隔离性，数据库中对事务的隔离级别做出了限制，分别在一定程度上对以上问题进行了解决。</p>
+<h2 id="事务隔离级别"><a href="#事务隔离级别" class="headerlink" title="事务隔离级别"></a>事务隔离级别</h2><p>在标准SQL规范中，定义了四个事务隔离级别。</p>
+<ol>
+<li>读未提交。最低级别，以上问题均无法解决。</li>
+<li>读已提交。可避免脏读情况发生。</li>
+<li>可重复读取。可避免脏读、不可重复读情况的发生。<strong>保证在事务的处理过程中，多次读取同一个数据的时候，其值都和事务开始的时候是一致的</strong>。这也是为何下图中只能读取到1的原因。</li>
+<li>串行化。最严格的事务隔离级别，要求所有事务被串行执行，不能并发执行，可避免脏读、不可重复读、幻读情况的发生。</li>
+</ol>
+<p>下图中是一个很好的例子，分别解释了四种事务隔离级别下，事务B能够读取到的结果。</p>
+<p><img src="/img/%E5%88%9D%E8%AF%86%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/img1.jpg"></p>
+<p><strong>总的来说，事务隔离级别越高，越能保证数据的完整性和一致性，但是付出的代价却是并发的性能。</strong></p>
+<p><img src="/img/%E5%88%9D%E8%AF%86%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB/img2.jpg"></p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>数据库</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>后台研发知识点总结</title>
+    <url>/2017/04/08/%E5%90%8E%E5%8F%B0%E7%A0%94%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%80%BB%E7%BB%93/</url>
+    <content><![CDATA[<h1 id="后台研发知识点总结"><a href="#后台研发知识点总结" class="headerlink" title="后台研发知识点总结"></a>后台研发知识点总结</h1><p>为了准备面试，特此将后台研发相关知识以及在面试中遇到的实际问题总结出来，以供随时复习。</p>
+<span id="more"></span>
+
+<h2 id="Java-基础知识"><a href="#Java-基础知识" class="headerlink" title="Java 基础知识"></a>Java 基础知识</h2><h3 id="Java-数据类型分为？"><a href="#Java-数据类型分为？" class="headerlink" title="Java 数据类型分为？"></a>Java 数据类型分为？</h3><p>基本数据类型：int ,float, boolean, char, byte, double, long, short<br>引用数据类型：类，数组，接口</p>
+<p>基本数据类型可以在栈中直接分配内存<br>引用数据类型则是数据的引用在栈中，其对象在堆中</p>
+<h3 id="八种基本数据类型？"><a href="#八种基本数据类型？" class="headerlink" title="八种基本数据类型？"></a>八种基本数据类型？</h3><table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">字节</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">byte</td>
+<td align="left">1</td>
+</tr>
+<tr>
+<td align="left">short</td>
+<td align="left">2</td>
+</tr>
+<tr>
+<td align="left">int</td>
+<td align="left">4</td>
+</tr>
+<tr>
+<td align="left">long</td>
+<td align="left">8</td>
+</tr>
+<tr>
+<td align="left">float</td>
+<td align="left">4</td>
+</tr>
+<tr>
+<td align="left">double</td>
+<td align="left">8</td>
+</tr>
+<tr>
+<td align="left">char</td>
+<td align="left">2</td>
+</tr>
+<tr>
+<td align="left">boolean</td>
+<td align="left">1</td>
+</tr>
+</tbody></table>
+<h3 id="String，Stringbuffer，StringBuilder的区别？"><a href="#String，Stringbuffer，StringBuilder的区别？" class="headerlink" title="String，Stringbuffer，StringBuilder的区别？"></a>String，Stringbuffer，StringBuilder的区别？</h3><p>String：字符串常量<br>StringBuffer：字符串变量, 线程安全的<br>StringBuilder：字符串变量, 线程非安全的</p>
+<p>三者在执行速度方面的比较：StringBuilder &gt;  StringBuffer  &gt;  String</p>
+<p>对于三者使用的总结： </p>
+<ol>
+<li>如果要操作少量的数据用 &#x3D; String</li>
+<li>单线程操作字符串缓冲区 下操作大量数据 &#x3D; StringBuilder</li>
+<li>多线程操作字符串缓冲区 下操作大量数据 &#x3D; StringBuffer</li>
+</ol>
+<h2 id="JVM"><a href="#JVM" class="headerlink" title="JVM"></a>JVM</h2><h3 id="类的实例化顺序，比如父类静态数据，构造函数，字段，子类静态数据，构造函数，字段，他们的执行顺序"><a href="#类的实例化顺序，比如父类静态数据，构造函数，字段，子类静态数据，构造函数，字段，他们的执行顺序" class="headerlink" title="类的实例化顺序，比如父类静态数据，构造函数，字段，子类静态数据，构造函数，字段，他们的执行顺序"></a>类的实例化顺序，比如父类静态数据，构造函数，字段，子类静态数据，构造函数，字段，他们的执行顺序</h3><ol>
+<li>父类静态成员和静态初始化块 ，按在代码中出现的顺序依次执行</li>
+<li>子类静态成员和静态初始化块 ，按在代码中出现的顺序依次执行</li>
+<li>父类实例成员和实例初始化块 ，按在代码中出现的顺序依次执行</li>
+<li>父类构造方法</li>
+<li>子类实例成员和实例初始化块 ，按在代码中出现的顺序依次执行</li>
+<li>子类构造方法<br>结论：对象初始化的顺序，先静态方法，再构造方法，每个又是先基类后子类。</li>
+</ol>
+<h2 id="Java-框架"><a href="#Java-框架" class="headerlink" title="Java 框架"></a>Java 框架</h2><h2 id="操作系统"><a href="#操作系统" class="headerlink" title="操作系统"></a>操作系统</h2><h3 id="产生死锁的条件？"><a href="#产生死锁的条件？" class="headerlink" title="产生死锁的条件？"></a>产生死锁的条件？</h3><ol>
+<li>互斥条件：一个资源同时只能由一个进程占有，不能有两个或者两个以上的占有。</li>
+<li>不可抢占条件：在一个进程所获取的资源未使用完毕之前，资源申请者不能强行从资源占有者手中抢占资源。</li>
+<li>占有申请条件：进程已经占有了一个资源，但是又需要申请新的资源，但是新申请的资源已经被别的进程占有了，此时，当前进程就会阻塞，但是在获取申请的资源之前，它还会一直占有已占有的那个资源</li>
+<li>循环等待条件：存在一个循环等待序列，p1等待p2，p2等待p3， p3等待p1，形成一个进程循环等待。</li>
+</ol>
+<h2 id="计算机网络"><a href="#计算机网络" class="headerlink" title="计算机网络"></a>计算机网络</h2><h3 id="http1-0和http1-1有什么区别"><a href="#http1-0和http1-1有什么区别" class="headerlink" title="http1.0和http1.1有什么区别"></a>http1.0和http1.1有什么区别</h3><ol>
+<li>HTTP&#x2F;1.0协议使用非持久连接,即在非持久连接下,一个tcp连接只传输一个Web对象；</li>
+<li>HTTP&#x2F;1.1默认使用持久连接(然而,HTTP&#x2F;1.1协议的客户机和服务器可以配置成使用非持久连接)。在持久连接下,不必为每个Web对象的传送建立一个新的连接,一个连接中可以传输多个对象.</li>
+</ol>
+<p>一个WEB站点每天可能要接收到上百万的用户请求，为了提高系统的效率，HTTP 1.0规定浏览器与服务器只保持短暂的连接，浏览器的每次请求都需要与服务器建立一个TCP连接，服务器完成请求处理后立即断开TCP连接，服务器不跟踪每个客户也不记录过去的请求。但是，这也造成了一些性能上的缺陷，例如，一个包含有许多图像的网页文件中并没有包含真正的图像数据内容，而只是指明了这些图像的URL地址，当WEB浏览器访问这个网页文件时，浏览器首先要发出针对该网页文件的请求，当浏览器解析WEB服务器返回的该网页文档中的HTML内容时，发现其中的&lt;img&gt;图像标签后，浏览器将根据&lt;img&gt;标签中的src属性所指定的URL地址再次向服务器发出下载图像数据的请求。<br>显然，访问一个包含有许多图像的网页文件的整个过程包含了多次请求和响应，每次请求和响应都需要建立一个单独的连接，每次连接只是传输一个文档和图像，上一次和下一次请求完全分离。即使图像文件都很小，但是客户端和服务器端每次建立和关闭连接却是一个相对比较费时的过程，并且会严重影响客户机和服务器的性能。当一个网页文件中包含 Applet，JavaScript文件，CSS文件等内容时，也会出现类似上述的情况。<br>为了克服HTTP 1.0的这个缺陷，HTTP 1.1支持持久连接，在一个TCP连接上可以传送多个HTTP请求和响应，减少了建立和关闭连接的消耗和延迟。一个包含有许多图像的网页文件的多个请求和应答可以在一个连接中传输，但每个单独的网页文件的请求和应答仍然需要使用各自的连接。HTTP 1.1还允许客户端不用等待上一次请求结果返回，就可以发出下一次请求，但服务器端必须按照接收到客户端请求的先后顺序依次回送响应结果，以保证客户端能够区分出每次请求的响应内容，这样也显著地减少了整个下载过程所需要的时间。基于HTTP 1.1协议的客户机与服务器的信息交换过程。</p>
+<h3 id="TCP三次握手和四次挥手的流程"><a href="#TCP三次握手和四次挥手的流程" class="headerlink" title="TCP三次握手和四次挥手的流程"></a>TCP三次握手和四次挥手的流程</h3><p><img src="/img/%E5%90%8E%E5%8F%B0%E7%A0%94%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%80%BB%E7%BB%93/tcp1.png"></p>
+<p><img src="/img/%E5%90%8E%E5%8F%B0%E7%A0%94%E5%8F%91%E7%9F%A5%E8%AF%86%E7%82%B9%E6%80%BB%E7%BB%93/tcp2.png"></p>
+<h3 id="为什么建立连接要进行3次握手-而断开连接要进行4次"><a href="#为什么建立连接要进行3次握手-而断开连接要进行4次" class="headerlink" title="为什么建立连接要进行3次握手,而断开连接要进行4次"></a>为什么建立连接要进行3次握手,而断开连接要进行4次</h3><p>TCP建立连接要进行3次握手,而断开连接要进行4次,这是由于TCP的半关闭造成的,因为TCP连接是全双工的(即数据可在两个方向上同时传递)所以进行关闭时每个方向上都要单独进行关闭,这个单方向的关闭就叫半关闭.<br>关闭的方法是一方完成它的数据传输后,就发送一个FIN来向另一方通告将要终止这个方向的连接.当一端收到一个FIN,它必须通知应用层TCP连接已终止了这个方向的数据传送,发送FIN通常是应用层进行关闭的结果.</p>
+<h3 id="为什么不能两次握手进行连接？"><a href="#为什么不能两次握手进行连接？" class="headerlink" title="为什么不能两次握手进行连接？"></a>为什么不能两次握手进行连接？</h3><p>现在把三次握手改成仅需要两次握手，死锁是可能发生的。作为例子，考虑计算机S和C之间的通信，假定C给S发送一个连接请求分组，S收到了这个分组，并发送了确认应答分组。按照两次握手的协定，S认为连接已经成功地建立了，可以开始发送数据分组。可是，C在S的应答分组在传输中被丢失的情况下，将不知道S是否已准备好，不知道S建立什么样的序列号，C甚至怀疑S是否收到自己的连接请求分组。在这种情况下，C认为连接还未建立成功，将忽略S发来的任何数据分组，只等待连接确认应答分组。而S在发出的分组超时后，重复发送同样的分组。这样就形成了死锁。</p>
+<h3 id="说说你知道的几种HTTP响应码"><a href="#说说你知道的几种HTTP响应码" class="headerlink" title="说说你知道的几种HTTP响应码"></a>说说你知道的几种HTTP响应码</h3><p>1XX Informational（信息性状态码）接收的请求正在处理<br>2XX Success（成功状态码） 请求正常处理完毕<br>3XX Redirection（重定向状态码） 需要进行附加操作以完成请求<br>4XX Client Error（客户端错误状态码）服务器无法处理请求<br>5XX Server Error（服务器错误状态码）服务器处理请求出错</p>
+<p>200：请求被正常处理<br>204：请求被受理但没有资源可以返回<br>206：客户端只是请求资源的一部分，服务器只对请求的部分资源执行GET方法，相应报文中通过Content-Range指定范围的资源。<br>301：永久性重定向<br>302：临时重定向<br>303：与302状态码有相似功能，只是它希望客户端在请求一个URI的时候，能通过GET方法重定向到另一个URI上<br>304：发送附带条件的请求时，条件不满足时返回，与重定向无关<br>307：临时重定向，与302类似，只是强制要求使用POST方法<br>400：请求报文语法有误，服务器无法识别<br>401：请求需要认证<br>403：请求的对应资源禁止被访问<br>404：服务器无法找到对应资源<br>500：服务器内部错误<br>503：服务器正忙</p>
+<h2 id="数据库"><a href="#数据库" class="headerlink" title="数据库"></a>数据库</h2><h3 id="数据库事务ACID"><a href="#数据库事务ACID" class="headerlink" title="数据库事务ACID?"></a>数据库事务ACID?</h3><ol>
+<li>A: 原子性：指事务的所有操作要么全部成功，要么全部失败回滚。</li>
+<li>C: 一致性：指事务必须使得数据库从一个一致性状态变换到另一个一致性状态，举个例子，银行转账，无论是用户a转钱给用户b，还是用户b转钱给用户a，两个人的总钱数不能发生变化。</li>
+<li>I: 隔离性：指当多个用户访问数据库的时候，数据库为每一个用户开启的事务不能被其他事务干扰，多个并发事务之间要相互隔离。</li>
+<li>D：持久性：指当事务完成之后，该事务对数据库所作的更改便持久化的保存在数据库中，并不会回滚。</li>
+</ol>
+<h3 id="数据库脏读，幻读，不可重复读都是什么？"><a href="#数据库脏读，幻读，不可重复读都是什么？" class="headerlink" title="数据库脏读，幻读，不可重复读都是什么？"></a>数据库脏读，幻读，不可重复读都是什么？</h3><ol>
+<li><p>脏读(<strong>多次写中间被读</strong>)<br> 脏读是指在一个事务处理过程里读取了另一个未提交的事务中的数据。<br> 　　当一个事务正在多次修改某个数据，而在这个事务中这多次的修改都还未提交，这时一个并发的事务来访问该数据，就会造成两个事务得到的数据不一致。</p>
+</li>
+<li><p>不可重复读(<strong>多次读中间被写</strong>)<br> 不可重复读是指在对于数据库中的某个数据，一个事务范围内多次查询却返回了不同的数据值，这是由于在查询间隔，被另一个事务修改并提交了。</p>
+</li>
+<li><p>幻读(<strong>一批数据整体</strong>)<br> 幻读是事务非独立执行时发生的一种现象。例如事务T1对一个表中所有的行的某个数据项做了从“1”修改为“2”的操作，这时事务T2又对这个表中插入了一行数据项，而这个数据项的数值还是为“1”并且提交给数据库。而操作事务T1的用户如果再查看刚刚修改的数据，会发现还有一行没有修改，其实这行是从事务T2中添加的，就好像产生幻觉一样，这就是发生了幻读。<br> 　　幻读和不可重复读都是读取了另一条已经提交的事务（这点就脏读不同），所不同的是不可重复读查询的都是同一个数据项，而幻读针对的是一批数据整体（比如数据的个数）。</p>
+</li>
+</ol>
+<h3 id="MySQL数据库隔离级别有哪几种"><a href="#MySQL数据库隔离级别有哪几种" class="headerlink" title="MySQL数据库隔离级别有哪几种"></a>MySQL数据库隔离级别有哪几种</h3><ol>
+<li>Serializable (串行化)：可避免脏读、不可重复读、幻读的发生。</li>
+<li>Repeatable read (可重复读)：可避免脏读、不可重复读的发生。</li>
+<li>Read committed (读已提交)：可避免脏读的发生。</li>
+<li>Read uncommitted (读未提交)：最低级别，任何情况都无法保证。</li>
+</ol>
+<p><strong><font color = red>一般数据库默认的隔离级别是Read committed (读已提交)， 但是MySQL是个例外，默认隔离级别是Repeatable read (可重复读)</font></strong></p>
+<h3 id="MySQL四种隔离级别是怎么实现的？"><a href="#MySQL四种隔离级别是怎么实现的？" class="headerlink" title="MySQL四种隔离级别是怎么实现的？"></a>MySQL四种隔离级别是怎么实现的？</h3><ol>
+<li>Read uncommitted(未授权读取、读未提交)：<br>如果一个事务已经开始写数据，则另外一个事务则不允许同时进行写操作，但允许其他事务读此行数据。该隔离级别可以通过“排他写锁”实现。<br>避免了更新丢失，却可能出现脏读。也就是说事务B读取到了事务A未提交的数据。</li>
+<li>Read committed（授权读取、读提交）：<br>读取数据的事务允许其他事务继续访问该行数据，但是未提交的写事务将会禁止其他事务访问该行。<br>该隔离级别避免了脏读，但是却可能出现不可重复读。事务A事先读取了数据，事务B紧接了更新了数据，并提交了事务，而事务A再次读取该数据时，数据已经发生了改变。</li>
+<li>Repeatable read（可重复读取）：<br>读取数据的事务将会禁止写事务（但允许读事务），写事务则禁止任何其他事务。<br>避免了不可重复读取和脏读，但是有时可能出现幻读。这可以通过“共享读锁”和“排他写锁”实现。</li>
+<li>Serializable（序列化）：<br>提供严格的事务隔离。它要求事务序列化执行，事务只能一个接着一个地执行，但不能并发执行。如果仅仅通过“行级锁”是无法实现事务序列化的，必须通过其他机制保证新插入的数据不会被刚执行查询操作的事务访问到。<br>序列化是最高的事务隔离级别，同时代价也花费最高，性能很低，一般很少使用，在该级别下，事务顺序执行，不仅可以避免脏读、不可重复读，还避免了幻像读。</li>
+</ol>
+<h3 id="什么情况下使用缓存"><a href="#什么情况下使用缓存" class="headerlink" title="什么情况下使用缓存"></a>什么情况下使用缓存</h3><p>对于内容变换缓慢或者不太重要，但又需要频繁查询数据库或从源头计算的中间结果或最终结果，我们可以采取使用缓存的方法，将其写到缓存中，每次使用时，只要缓存有效，就可直接使用缓存，不用再到数据库中取或重新计算</p>
+<h3 id="数据库左外连接和右外连接有什么区别？"><a href="#数据库左外连接和右外连接有什么区别？" class="headerlink" title="数据库左外连接和右外连接有什么区别？"></a>数据库左外连接和右外连接有什么区别？</h3><p>左连接是以左边表中的数据为基准，如果左表中有数据，右表中没有数据，则显示：左表中的数据    右表中的数据(为空)<br>换句话说，左连接的结果集包括left子句中指定的左表的所有行，而不仅仅是连接匹配到的行，<strong>如果左表中的某行在右表中没有匹配行，则在结果集中相关联列有关右表的列均为空值(因为没有匹配行)</strong><br>右连接则正好相反，如果右表的某行在左表中没有匹配行，则左表返回空值</p>
+<h3 id="主键和unique的区别"><a href="#主键和unique的区别" class="headerlink" title="主键和unique的区别"></a>主键和unique的区别</h3><ol>
+<li>主键一定是唯一性索引，唯一性索引并不一定就是主键；</li>
+<li>一个表中可以有多个唯一性索引，但只能有一个主键；</li>
+<li>主键列不允许空值，而唯一性索引列允许空值。</li>
+</ol>
+<h2 id="Redis-amp-缓存相关"><a href="#Redis-amp-缓存相关" class="headerlink" title="Redis&amp;缓存相关"></a>Redis&amp;缓存相关</h2><h3 id="Redis的数据淘汰策略"><a href="#Redis的数据淘汰策略" class="headerlink" title="Redis的数据淘汰策略"></a>Redis的数据淘汰策略</h3><p>在 Redis 中，允许用户设置最大使用内存大小 server.maxmemory, redis 内存数据集大小上升到一定大小的时候，就会施行数据淘汰策略。redis 提供 6种数据淘汰策略：</p>
+<ol>
+<li>volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰</li>
+<li>volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰</li>
+<li>volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰</li>
+<li>allkeys-lru：从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰</li>
+<li>allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰</li>
+<li>no-enviction（驱逐）：禁止驱逐数据</li>
+</ol>
+<p>redis 确定驱逐某个键值对后，会删除这个数据并，并将这个数据变更消息发布到本地（AOF 持久化）和从机（主从连接）。</p>
+<h2 id="Linux"><a href="#Linux" class="headerlink" title="Linux"></a>Linux</h2><h3 id="如何查找一个进程"><a href="#如何查找一个进程" class="headerlink" title="如何查找一个进程"></a>如何查找一个进程</h3><p>使用<strong>ps</strong>命令可以查看进程状态<br><strong>ps -ef</strong>可以查看所有进程，配合<strong>grep</strong>命令可以进行筛选，如查看tomcat进程的命令: **ps -ef | grep tomcat **</p>
+<h2 id="设计模式"><a href="#设计模式" class="headerlink" title="设计模式"></a>设计模式</h2><h3 id="在装饰器模式和代理模式之间，你如何抉择"><a href="#在装饰器模式和代理模式之间，你如何抉择" class="headerlink" title="在装饰器模式和代理模式之间，你如何抉择"></a>在装饰器模式和代理模式之间，你如何抉择</h3><p>装饰器模式关注于在一个对象上动态的添加方法，然而代理模式关注于控制对对象的访问。换句话 说，用代理模式，代理类（proxy class）可以对它的客户隐藏一个对象的具体信息。因此，当使用代理模式的时候，我们常常在一个代理类中创建一个对象的实例。并且，当我们使用装饰器模 式的时候，我们通常的做法是将原始对象作为一个参数传给装饰者的构造器。</p>
+<h2 id="常见算法题"><a href="#常见算法题" class="headerlink" title="常见算法题"></a>常见算法题</h2><h2 id="工程实践"><a href="#工程实践" class="headerlink" title="工程实践"></a>工程实践</h2><h3 id="后台系统怎么防止请求重复提交？"><a href="#后台系统怎么防止请求重复提交？" class="headerlink" title="后台系统怎么防止请求重复提交？"></a>后台系统怎么防止请求重复提交？</h3><p>首先我们在进入表单填写页面时，在服务器端生成一个唯一的随机标识号，专业术语称为Token(令牌)，同时在当前用户的Session域中保存这个Token。然后将Token发送到客户端的Form表单中，在Form表单中使用隐藏域来存储这个Token，表单提交的时候连同这个Token一起提交到服务器端，然后在服务器端判断客户端提交上来的Token与服务器端生成的Token是否一致，如果不一致，那就是重复提交了，此时服务器端就可以不处理重复提交的表单。如果相同则处理表单提交，并清除当前用户的Session域中存储的标识号。<br>在下列情况下，服务器程序将拒绝处理用户提交的表单请求：</p>
+<ol>
+<li>存储Session域中的Token(令牌)与表单提交的Token(令牌)不同。</li>
+<li>当前用户的Session中不存在Token(令牌)。</li>
+<li>用户提交的表单数据中没有Token(令牌)。<br> <strong><font color = red>需要注意的是当比对成功后，必须立即将该Session的值设置为空，这样才可保证页面再次POST时表单中的校验串就无法于Session中的空值比对成功。</font></strong></li>
+</ol>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Java</tag>
+        <tag>后台</tag>
+        <tag>面试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>如何保证消息队列的幂等性？</title>
+    <url>/2019/12/21/%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%9A%84%E5%B9%82%E7%AD%89%E6%80%A7%EF%BC%9F/</url>
+    <content><![CDATA[<h2 id="问题：如何保证消息队列的幂等性？"><a href="#问题：如何保证消息队列的幂等性？" class="headerlink" title="问题：如何保证消息队列的幂等性？"></a>问题：如何保证消息队列的幂等性？</h2><p>这个其实考察的你对消息队列数据重复消费的问题，是否有了解，是否知道怎么解决？如果这块不知道，那么面试官会觉得如果交给你做功能，可能会出现多次消费的情况。</p>
+<h2 id="解决思路"><a href="#解决思路" class="headerlink" title="解决思路"></a>解决思路</h2><h3 id="为什么会出现重复消费？"><a href="#为什么会出现重复消费？" class="headerlink" title="为什么会出现重复消费？"></a>为什么会出现重复消费？</h3><p>比如说消费端已经消费了 offset&#x3D;2，offset&#x3D;3，offset&#x3D;4 的三条数据，正准备把这个offset的值传给 kafka，这时候消费端机器宕机了，这个数据没传过去；</p>
+<p>重启之后，消费端同步 kafka，kafka 那边消费的记录 offset 还是 1，那么 kafka 会认为之前的 2、3、4 都没有消费过，会把这几个数据再次传给消费端；此时消费端这边就重复对这几条数据进行了消费。在数据库里面可能就多了很多重复的数据。</p>
+<p>像其它的MQ，也是一样，消费端再返回给 MQ 的时候，当机了或者重启了，那么都会出现重复消费的问题。</p>
+<h3 id="问题解决："><a href="#问题解决：" class="headerlink" title="问题解决："></a>问题解决：</h3><p><strong>幂等性：一个请求，不管重复来多少次，结果是不会改变的。</strong></p>
+<p>每个消息都会有唯一的消息 id。</p>
+<ol>
+<li><p>先查再保存。每次保存数据的时候，都先查一下，如果数据存在了那么就不保存。这个情况是并发不高的情况。</p>
+</li>
+<li><p>业务表添加约束条件。如果你的数据库将来都不会分库分表，那么可以在业务表字段加上唯一约束条件（UNIQUE），这样相同的数据就不会保存为多份。</p>
+</li>
+<li><p>添加消息表。在数据库里面，添加一张消息消费记录表，表字段加上唯一约束条件（UNIQUE），消费完之后就往表里插入一条数据。因为加了唯一约束条件，第二次保存的时候，mysql 就会报错，就插入不进去；通过数据库可以限制重复消费。</p>
+</li>
+<li><p>使用redis。如果你的系统是分布式的，又做了分库分表，那么可以使用 redis 来做记录，把消息 id 存在 redis 里，下次再有重复消息 id 在消费的时候，如果发现 redis 里面有了就不能进行消费。</p>
+</li>
+<li><p>高并发下。如果你的系统并发很高，那么可以使用redis或者zookeeper的分布式对消息id加锁，然后使用上面的几个方法进行幂等性控制。</p>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>消息队列</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>常用Linux命令总结</title>
+    <url>/2015/07/01/%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/</url>
+    <content><![CDATA[<h1 id="常用Linux命令总结"><a href="#常用Linux命令总结" class="headerlink" title="常用Linux命令总结"></a>常用Linux命令总结</h1><p>由于有的时候需要在Linux&#x2F;Mac系统上进行工作，然而有的命令隔一段时间就会忘记，所以特此总结在此，方便查阅和记忆</p>
+<p>文中很多内容都是网上参考别人的文章，具体链接在文末</p>
+<span id="more"></span>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ls     显示文件或目录</span><br><span class="line">   -l  列出文件详细信息l(list)</span><br><span class="line">   -a  列出当前目录下所有文件及目录，包括隐藏的a(all)</span><br><span class="line">mkdir  创建目录</span><br><span class="line">   -p  创建目录，若无父目录，则创建p(parent)   </span><br><span class="line">cd     切换目录</span><br><span class="line">touch  创建空文件</span><br><span class="line">echo   创建带有内容的文件。</span><br><span class="line">cat    查看文件内容</span><br><span class="line">cp     拷贝</span><br><span class="line">mv     移动或重命名</span><br><span class="line">rm     删除文件</span><br><span class="line">   -r  递归删除，可删除子目录及文件</span><br><span class="line">   -f  强制删除</span><br><span class="line">find   在文件系统中搜索某文件</span><br><span class="line">wc     统计文本中行数、字数、字符数</span><br><span class="line">grep   在文本文件中查找某个字符串</span><br><span class="line">rmdir  删除空目录</span><br><span class="line">pwd    显示当前目录</span><br><span class="line">ln     创建链接文件</span><br><span class="line">more、less   分页显示文本文件内容</span><br><span class="line">head、tail   显示文件头、尾内容</span><br></pre></td></tr></table></figure>
+
+<h2 id="系统管理命令"><a href="#系统管理命令" class="headerlink" title="系统管理命令"></a>系统管理命令</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">stat     显示指定文件的详细信息，比ls更详细</span><br><span class="line">who      显示在线登陆用户</span><br><span class="line">whoami   显示当前操作用户</span><br><span class="line">hostname 显示主机名</span><br><span class="line">uname    显示系统信息</span><br><span class="line">top      动态显示当前耗费资源最多进程信息</span><br><span class="line">ps       显示瞬间进程状态 ps -aux</span><br><span class="line">du       查看目录大小 du -h /home带有单位显示目录信息</span><br><span class="line">df       查看磁盘大小 df -h 带有单位显示磁盘信息</span><br><span class="line">ifconfig 查看网络情况</span><br><span class="line">ping     测试网络连通</span><br><span class="line">netstat  显示网络状态信息</span><br><span class="line">man      命令不会用了，找男人? 如：man ls</span><br><span class="line">clear    清屏</span><br><span class="line">alias    对命令重命名 如：alias showmeit=”ps -aux” ，另外解除使用unaliax showmeit</span><br><span class="line">kill     杀死进程，可以先用ps 或 top命令查看进程的id，然后再用kill命令杀死进程。</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="关机-x2F-重启机器"><a href="#关机-x2F-重启机器" class="headerlink" title="关机&#x2F;重启机器"></a>关机&#x2F;重启机器</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">shutdown</span><br><span class="line">    -r      关机重启</span><br><span class="line">    -h      关机不重启</span><br><span class="line">    now     立刻关机</span><br><span class="line">halt        关机</span><br><span class="line">reboot      重启</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><p><a href="http://www.weixuehao.com/archives/25">http://www.weixuehao.com/archives/25</a></p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>快速记忆：List及其小伙伴们</title>
+    <url>/2018/03/22/%E5%BF%AB%E9%80%9F%E8%AE%B0%E5%BF%86%EF%BC%9AList%E5%8F%8A%E5%85%B6%E5%B0%8F%E4%BC%99%E4%BC%B4%E4%BB%AC/</url>
+    <content><![CDATA[<p>一直以来，<strong>ArrayList</strong>和<strong>LinkedList</strong>的区别，<strong>ArrayList</strong>和<strong>Vector</strong>的区别，List下不同实现类的相关知识点都是Java开发人员在开发过程中必须要掌握的基础知识，也是在面试过程中最常见的问题之一。</p>
+<p>在这里，本文会将这些知识点加以整理，提取出最精华，最容易使用到的部分给大家，方便记忆。</p>
+<h2 id="List"><a href="#List" class="headerlink" title="List"></a>List</h2><p>List是一个继承于<strong>Collection</strong>的接口，ArrayList，LinkedList，Vector，Stack都只是它的一个实现类。</p>
+<h2 id="ArrayList"><a href="#ArrayList" class="headerlink" title="ArrayList"></a>ArrayList</h2><p>一个动态数组，由数组实现，所以具有数组的优缺点。方便快速随机访问，不适合频繁的添加或删除元素。</p>
+<p>默认数组大小10。</p>
+<p><strong>扩容</strong>：底层采用线性连续空间存放元素，当空间不够时，会重新申请一片新的空间，大小是原来的<strong>1.5倍＋1</strong>，并把原有的内容复制过去。</p>
+<p><strong>线程安全性</strong>：非线程安全</p>
+<p><strong>序列化</strong>：支持序列化，实现了java.io.Serializable接口</p>
+<p><strong>应用场景</strong>（以下两个条件同时满足）</p>
+<ol>
+<li>需要快速<strong>随机访问</strong>元素</li>
+<li><strong>单线程场景</strong>或者多线程场景但是List只会被单线程操作</li>
+</ol>
+<h2 id="LinkedList"><a href="#LinkedList" class="headerlink" title="LinkedList"></a>LinkedList</h2><p>一个<strong>双向链表</strong>，具有链表的一些性质。包括能够快速添加和删除元素，但是不适合频繁访问元素，因为要从头指针开始遍历查找。</p>
+<p>查找时，会根据index下标和整个List的长度size的关系，决定是从头查找还是从尾开始。如果index&lt;size&#x2F;2，则从头查找，否则从另一端开始遍历。</p>
+<p>默认初始大小0。</p>
+<p><strong>扩容</strong>：底层实现是链表，不存在扩容问题。</p>
+<p><strong>线程安全性</strong>：非线程安全</p>
+<p><strong>应用场景</strong>：适用于需要<strong>快速插入</strong>和<strong>删除元素</strong>的场景</p>
+<h2 id="Vector"><a href="#Vector" class="headerlink" title="Vector"></a>Vector</h2><p>和ArrayList一样，都是由动态数组实现。方便快速随机访问，不适合频繁的添加或删除元素。</p>
+<p>默认数组大小10。</p>
+<p><strong>扩容</strong>：与指定的增长系数有关，如果增长系数&gt;0，则新的容量增长为<strong>原来的容量＋增长系数</strong>，否则变为<strong>原来容量的2倍</strong>。</p>
+<p><strong>线程安全性</strong>：线程安全，函数大多数具有关键字synchronized，即都支持同步。</p>
+<p>性能较差，因为方法加入了synchronized修饰，当执行的时候，系统会在方法前加一把锁，方法执行结束之后再释放掉。加锁和释放锁的过程会造成一定的系统开销，因此性能上要差许多。</p>
+<p><strong>序列化</strong>：不支持序列化</p>
+<p><strong>应用场景</strong>（以下两个条件同时满足）</p>
+<ol>
+<li>需要快速<strong>随机访问</strong>元素</li>
+<li>多线程场景且List会被多个线程操作</li>
+</ol>
+<h2 id="Stack"><a href="#Stack" class="headerlink" title="Stack"></a>Stack</h2><p>Stack是栈，继承于Vector。具有<strong>先进后出</strong>的特点。</p>
+<p>对Vector进行扩展，添加了五个方法操作</p>
+<ol>
+<li>empty() 检查栈是否为空</li>
+<li>peek() 查看栈顶对象</li>
+<li>pop() 移除栈顶对象并返回</li>
+<li>push(E item) 压入栈顶</li>
+<li>search(Object o) 查找对象并返回其位置(下标值)</li>
+</ol>
+<p><strong>线程安全性</strong>：线程安全，由于继承于Vector，Vector是线程安全，故Stack也是线程安全类。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>有关List族群的相关知识点肯定不止以上这些，它的每一个实现类，都具有自己独特的性质，方便开发人员在不同的场景使用。</p>
+<p>本文的内容只是帮助大家把这些实现类中比较重要的一些属性整理并记录下来，帮助大家快速记忆。如果大家希望能够了解更多的相关知识，可以自行上网查阅资料，也可以在文章最后留言，小编会在之后的文章中针对大家的需要整理成文，提供给大家～</p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Java</tag>
+        <tag>数据结构</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>微信小程序实战之菜谱小程序</title>
+    <url>/2019/04/21/%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98%E4%B9%8B%E8%8F%9C%E8%B0%B1%E5%B0%8F%E7%A8%8B%E5%BA%8F/</url>
+    <content><![CDATA[<h1 id="微信小程序实战之菜谱小程序"><a href="#微信小程序实战之菜谱小程序" class="headerlink" title="微信小程序实战之菜谱小程序"></a>微信小程序实战之菜谱小程序</h1><p>最近突发奇想，想要自己搞个小程序玩儿玩儿，但是鉴于自己是搞后端服务器出身，对于偏前端的微信小程序开发实在是一知半解，尤其是对于css类样式相关，更是无从下手，于是乎，只能从晚上找了一个demo，对其进行了一番改造，然后进行上线，也算是基本完整的走了一遍小程序开发的简单流程，本篇文章就是对这次实践的简单介绍。</p>
+<p>先放个二维码压压惊～</p>
+<p><img src="/img/%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F%E5%AE%9E%E6%88%98%E4%B9%8B%E8%8F%9C%E8%B0%B1%E5%B0%8F%E7%A8%8B%E5%BA%8F/img1.jpg"></p>
+<h2 id="调研"><a href="#调研" class="headerlink" title="调研"></a>调研</h2><p>在开发之前，本人对微信小程序开发流程进行了一个简单调研，调研发现，开发者分为个人开发者和企业开发者，企业开发者除了比个人开发者能够使用更多的基础功能之外，能够被微信团队允许开放的领域范围也更加广泛。具体可参考如下：</p>
+<ul>
+<li><a href="https://developers.weixin.qq.com/miniprogram/product/material.html?t=19041716#%E4%B8%AA%E4%BA%BA%E4%B8%BB%E4%BD%93%E5%B0%8F%E7%A8%8B%E5%BA%8F%E5%BC%80%E6%94%BE%E7%9A%84%E6%9C%8D%E5%8A%A1%E7%B1%BB%E7%9B%AE">个人开发者</a></li>
+<li><a href="https://developers.weixin.qq.com/miniprogram/product/material.html?t=19041716#%E9%9D%9E%E4%B8%AA%E4%BA%BA%E4%B8%BB%E4%BD%93%E5%B0%8F%E7%A8%8B%E5%BA%8F%E5%BC%80%E6%94%BE%E7%9A%84%E6%9C%8D%E5%8A%A1%E7%B1%BB%E7%9B%AE">非个人开发者</a></li>
+</ul>
+<p>本人作为标准穷人一枚，肯定是交不起非个人开发者几百元的申请费的，于是乎只能从个人开发者允许开发的零星的小程序领域中选择了一个相对来说逻辑比较简单的类型－－菜谱小程序，进行流程的开发。</p>
+<h2 id="项目介绍"><a href="#项目介绍" class="headerlink" title="项目介绍"></a>项目介绍</h2><p>最终完成的成品项目主要包含了以下几部分：</p>
+<h3 id="云函数"><a href="#云函数" class="headerlink" title="云函数"></a>云函数</h3><p>云函数是指在微信云端运行的代码，微信私有协议天然鉴权，开发者只需编写自身业务逻辑代码，在该项目中主要是在登陆模块中用到了该功能。</p>
+<h3 id="数据库"><a href="#数据库" class="headerlink" title="数据库"></a>数据库</h3><p>微信云开发提供了一个json数据库，数据库中的每条记录都是一个 JSON 格式的对象。一个数据库可以有多个集合（相当于关系型数据中的表），集合可看做一个 JSON 数组，数组中的每个对象就是一条记录，记录的格式是 JSON 对象。</p>
+<p>本项目主要针对以下数据做了持久化：</p>
+<ol>
+<li>菜谱(需批量导入)</li>
+<li>菜谱分类列表(一条记录，手动添入即可)</li>
+<li>收藏(根据用户操作，自动增加和删除)</li>
+<li>搜索历史(根据用户操作，自动增加和删除)</li>
+</ol>
+<p>以上几项中的菜谱数据，需要开发者预先填充一些数据(终于到了服务端大显身手的时候)，本人写了个脚本，从网上简单爬取了一些。</p>
+<p>爬虫地址如下：<br><a href="https://github.com/darylliu/pythoncrawler.git"><strong>爬虫地址</strong></a></p>
+<p>有兴趣的朋友改改直接使用～</p>
+<h3 id="业务逻辑"><a href="#业务逻辑" class="headerlink" title="业务逻辑"></a>业务逻辑</h3><ol>
+<li>首页：主要包括了各个类别菜谱的展示，可以根据不同的类别跳转到每一类别的菜谱列表页</li>
+<li>搜索：精确搜索，实现原理是根据数据库中的类别列表进行匹配，在搜索的同时会把搜索历史记录下来。点击搜索结果，挑战菜谱列表页</li>
+<li>菜谱类别列表：对菜谱进行大类别划分</li>
+<li>个人页：主要展示个人用户头像以及收藏菜谱的列表</li>
+<li>菜谱详情页：包括一道菜的，简单介绍，图片，步骤，配料，辅料等元素</li>
+</ol>
+<p>代码大致结构：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">├── README.md</span><br><span class="line">├── project.config.json                               // 项目配置文件</span><br><span class="line">└── cloudfunctions | 云环境                            // 存放云函数目录</span><br><span class="line">│    └── login                                        // 云函数</span><br><span class="line">│        ├── index.js</span><br><span class="line">│        └── package.json</span><br><span class="line">└── miniprogram</span><br><span class="line">    ├── images                                        // 存放小程序图片</span><br><span class="line">    ├── pages                                         // 存放小程序各种页面</span><br><span class="line">    |    ├── index                                    // 首页</span><br><span class="line">    |    └── menu                                     // 菜单页</span><br><span class="line">    |    └── user                                     // 用户中心</span><br><span class="line">    |    └── search                                   // 搜索页</span><br><span class="line">    |    └── list                                     // 列表页 搜索结果页</span><br><span class="line">    |    └── detail                                   // 详情页</span><br><span class="line">    |    └── databaseGuide                            // 数据库指导页</span><br><span class="line">    |    └── chooseLib                                // 提示页</span><br><span class="line">    |    └── storageConsole                           // 文件上传提示</span><br><span class="line">    ├── style                                         // 样式文件目录</span><br><span class="line">    ├── app.js                                        // 小程序公用逻辑</span><br><span class="line">    ├── app.json                                      // 全局配置</span><br><span class="line">    ├── app.wxss                                      // 全局样式</span><br></pre></td></tr></table></figure>
+
+
+<p>代码地址如下：<br><a href="https://github.com/darylliu/micro_app_food"><strong>代码地址</strong></a></p>
+<h2 id="鸣谢"><a href="#鸣谢" class="headerlink" title="鸣谢"></a>鸣谢</h2><p>本次使用demo主要是在 github上找到的开源项目，借鸡下蛋，十分感谢！<br><a href="https://github.com/caochangkui/miniprogram-food"><strong>demo地址</strong></a></p>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>微信小程序</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>编程视频资源教程汇总</title>
+    <url>/2019/04/21/%E7%BC%96%E7%A8%8B%E8%A7%86%E9%A2%91%E8%B5%84%E6%BA%90%E6%95%99%E7%A8%8B%E6%B1%87%E6%80%BB/</url>
+    <content><![CDATA[<p>本人整理了一些编程视频资源，方便大家查询和学习，本篇会持续更新，内容横跨前端，后端，包括但不限于数据结构，Python，Java，redis，Kafka，Javascript，C++等等。感兴趣的可以收藏下～</p>
+<h2 id="前端"><a href="#前端" class="headerlink" title="前端"></a>前端</h2><h3 id="HTML5"><a href="#HTML5" class="headerlink" title="HTML5"></a>HTML5</h3><ul>
+<li><a href="https://pan.baidu.com/s/1F9tYY4Dc-JV6MsrOO0uXCQ">极客学院HTML5全套教程</a> 提取码: m935</li>
+</ul>
+<h3 id="微信小程序"><a href="#微信小程序" class="headerlink" title="微信小程序"></a>微信小程序</h3><ul>
+<li><a href="https://pan.baidu.com/s/13f9guMJ_hknQCjCR1KxQ5A">微信小程序视频教程+源码</a> 提取码: 3e8n</li>
+</ul>
+<h2 id="客户端"><a href="#客户端" class="headerlink" title="客户端"></a>客户端</h2><h3 id="Android"><a href="#Android" class="headerlink" title="Android"></a>Android</h3><ul>
+<li><a href="https://pan.baidu.com/s/1up4cilROXgYeExKQjIz-mw">极客学院Android全套教程</a> 提取码: 4rg3</li>
+</ul>
+<h2 id="服务端"><a href="#服务端" class="headerlink" title="服务端"></a>服务端</h2><h3 id="Kafka"><a href="#Kafka" class="headerlink" title="Kafka"></a>Kafka</h3><ul>
+<li><a href="https://pan.baidu.com/s/19u1qwiDpzTzSnXOfB0YzlA">Kafka极客学院</a> 提取码: sq5w</li>
+</ul>
+<h3 id="Redis"><a href="#Redis" class="headerlink" title="Redis"></a>Redis</h3><ul>
+<li><a href="https://pan.baidu.com/s/1sZH1SZ1BTBMJiT-xaWJsfw">Redis从入门到精通</a> 提取码: fek2</li>
+</ul>
+<h2 id="编程语言"><a href="#编程语言" class="headerlink" title="编程语言"></a>编程语言</h2><h3 id="C-x2F-C"><a href="#C-x2F-C" class="headerlink" title="C&#x2F;C++"></a>C&#x2F;C++</h3><ul>
+<li><a href="https://pan.baidu.com/s/1vilmLGA09zqhfiT_-hBEFg">C++ primer基础到精通视频</a> 提取码: pvrq</li>
+<li><a href="https://pan.baidu.com/s/1pJahIA0jH4rIb3A6tN2VMQ">零基础学习C语言及高级进阶</a> 提取码: i9xq</li>
+</ul>
+<h3 id="Java"><a href="#Java" class="headerlink" title="Java"></a>Java</h3><ul>
+<li><a href="https://pan.baidu.com/s/190ue6CPSZ9tMtlhTaNrkhQ">Java零基础到精通</a> 提取码: 75wr</li>
+<li><a href="https://pan.baidu.com/s/1mIoAtmxQSj6ItgcQUCCmLg">Java项目实战</a> 提取码: q33v</li>
+<li><a href="https://pan.baidu.com/s/1OMbdbMTmmHiZn5sw1dE3wA">一套扎进XXX系列</a> 提取码: qgt8</li>
+</ul>
+<h3 id="Python"><a href="#Python" class="headerlink" title="Python"></a>Python</h3><ul>
+<li><a href="https://pan.baidu.com/s/1rqHcrsDL8LV5tPKv1M2KMA">Python3零基础学习视频20周</a> 提取码: iyjn</li>
+<li><a href="https://pan.baidu.com/s/1GMTbQ4bJm0IcNGvdkNM4Ow">Python3爬虫</a> 提取码: yqpf</li>
+<li><a href="https://pan.baidu.com/s/1Hbfbbete8wuoSy8I6NG4ag">Python从入门到精通视频60集</a> 提取码: 2g7b</li>
+</ul>
+<h3 id="Go"><a href="#Go" class="headerlink" title="Go"></a>Go</h3><ul>
+<li><a href="https://pan.baidu.com/s/1__OlRfAX7vjeMpulAGTASw">Go语言编程基础</a> 提取码: m8ck</li>
+<li><a href="https://pan.baidu.com/s/1B6l-BQJz1DUqRzzGFkw5Ug">Go语言教程分享大杂烩(懒得起名了)</a> 提取码: mrvr</li>
+</ul>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><h3 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h3><ul>
+<li><a href="https://pan.baidu.com/s/18azHiQj4aPNXU2-Sykof1Q">c和c++数据结构</a> 提取码: gg26</li>
+</ul>
+]]></content>
+      <categories>
+        <category>资源</category>
+      </categories>
+      <tags>
+        <tag>视频教程</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>面试官：请你谈谈Java的类加载过程</title>
+    <url>/2018/02/01/%E9%9D%A2%E8%AF%95%E5%AE%98%EF%BC%9A%E8%AF%B7%E4%BD%A0%E8%B0%88%E8%B0%88Java%E7%9A%84%E7%B1%BB%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B/</url>
+    <content><![CDATA[<h1 id="面试官：请你谈谈Java的类加载过程"><a href="#面试官：请你谈谈Java的类加载过程" class="headerlink" title="面试官：请你谈谈Java的类加载过程"></a>面试官：请你谈谈Java的类加载过程</h1><p>刚刚走出校门的应届毕业生，如果在去寻求一份Java开发的工作时，你的面试官很有可能一边看着你的简历，一边漫不经心地问你：了解过Java类的加载过程吗？</p>
+<p>这个时候你一定要注意了，虽然这是一个老生常谈的问题，但是这也是一个非常能够考验你Java功底的问题。</p>
+<p>如果你答好了，这是你应该的；如果你没答好，那么对不起，面试官心中已经给了你不及格。</p>
+<p>今天，小编就<strong>Java类加载</strong>过程这个问题，抛砖引玉，说一下自己的理解，如果有不对的地方，欢迎大家在评论区指正。</p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>一个Java文件从编码完成到最终执行，一般主要包括两个过程</p>
+<ul>
+<li>编译</li>
+<li>运行</li>
+</ul>
+<p>编译，即把我们写好的java文件，通过javac命令编译成字节码，也就是我们常说的.class文件。</p>
+<p>运行，则是把编译生成的.class文件交给Java虚拟机(JVM)执行。</p>
+<p>而我们所说的类加载过程即是指JVM虚拟机把.class文件中类信息加载进内存，并进行解析生成对应的class对象的过程。</p>
+<p>举个通俗点的例子来说，JVM在执行某段代码时，遇到了class A， 然而此时内存中并没有class A的相关信息，于是JVM就会到相应的class文件中去寻找class A的类信息，并加载进内存中，这就是我们所说的类加载过程。</p>
+<p>由此可见，JVM不是一开始就把所有的类都加载进内存中，而是只有第一次遇到某个需要运行的类时才会加载，且只加载一次。</p>
+<h2 id="类加载"><a href="#类加载" class="headerlink" title="类加载"></a>类加载</h2><p>类加载的过程主要分为三个部分：</p>
+<ul>
+<li>加载</li>
+<li>链接</li>
+<li>初始化</li>
+</ul>
+<p>而链接又可以细分为三个小部分：</p>
+<ul>
+<li>验证</li>
+<li>准备</li>
+<li>解析</li>
+</ul>
+<p><img src="/img/%E9%9D%A2%E8%AF%95%E5%AE%98%EF%BC%9A%E8%AF%B7%E4%BD%A0%E8%B0%88%E8%B0%88Java%E7%9A%84%E7%B1%BB%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B/img1.jpg"></p>
+<h3 id="加载"><a href="#加载" class="headerlink" title="加载"></a>加载</h3><p>简单来说，加载指的是把class字节码文件从各个来源通过类加载器装载入内存中。</p>
+<p>这里有两个重点：</p>
+<ul>
+<li>字节码来源。一般的加载来源包括从本地路径下编译生成的.class文件，从jar包中的.class文件，从远程网络，以及动态代理实时编译</li>
+<li>类加载器。一般包括启动类加载器，扩展类加载器，应用类加载器，以及用户的自定义类加载器。</li>
+</ul>
+<p><strong>注：为什么会有自定义类加载器？</strong></p>
+<p>一方面是由于java代码很容易被反编译，如果需要对自己的代码加密的话，可以对编译后的代码进行加密，然后再通过实现自己的自定义类加载器进行解密，最后再加载。<br>另一方面也有可能从非标准的来源加载代码，比如从网络来源，那就需要自己实现一个类加载器，从指定源进行加载。</p>
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>主要是为了保证加载进来的字节流符合虚拟机规范，不会造成安全错误。</p>
+<p>包括对于文件格式的验证，比如常量中是否有不被支持的常量？文件中是否有不规范的或者附加的其他信息？</p>
+<p>对于元数据的验证，比如该类是否继承了被final修饰的类？类中的字段，方法是否与父类冲突？是否出现了不合理的重载？</p>
+<p>对于字节码的验证，保证程序语义的合理性，比如要保证类型转换的合理性。</p>
+<p>对于符号引用的验证，比如校验符号引用中通过全限定名是否能够找到对应的类？校验符号引用中的访问性（private，public等）是否可被当前类访问？</p>
+<h3 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h3><p>主要是为类变量（注意，不是实例变量）分配内存，并且赋予初值。</p>
+<p>特别需要注意，初值，不是代码中具体写的初始化的值，而是Java虚拟机根据不同变量类型的默认初始值。</p>
+<p>比如8种基本类型的初值，默认为0；引用类型的初值则为null；常量的初值即为代码中设置的值，final static tmp &#x3D; 456， 那么该阶段tmp的初值就是456</p>
+<h3 id="解析"><a href="#解析" class="headerlink" title="解析"></a>解析</h3><p>将常量池内的符号引用替换为直接引用的过程。</p>
+<p>两个重点：</p>
+<ul>
+<li>符号引用。即一个字符串，但是这个字符串给出了一些能够唯一性识别一个方法，一个变量，一个类的相关信息。</li>
+<li>直接引用。可以理解为一个内存地址，或者一个偏移量。比如类方法，类变量的直接引用是指向方法区的指针；而实例方法，实例变量的直接引用则是从实例的头指针开始算起到这个实例变量位置的偏移量</li>
+</ul>
+<p>举个例子来说，现在调用方法hello()，这个方法的地址是1234567，那么hello就是符号引用，1234567就是直接引用。</p>
+<p>在解析阶段，虚拟机会把所有的类名，方法名，字段名这些符号引用替换为具体的内存地址或偏移量，也就是直接引用。</p>
+<h3 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h3><p>这个阶段主要是对类变量初始化，是执行类构造器的过程。</p>
+<p>换句话说，只对static修饰的变量或语句进行初始化。</p>
+<p>如果初始化一个类的时候，其父类尚未初始化，则优先初始化其父类。</p>
+<p>如果同时包含多个静态变量和静态代码块，则按照自上而下的顺序依次执行。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>类加载过程只是一个类生命周期的一部分，在其前，有编译的过程，只有对源代码编译之后，才能获得能够被虚拟机加载的字节码文件；在其后还有具体的类使用过程，当使用完成之后，还会在方法区垃圾回收的过程中进行卸载。如果想要了解Java类整个生命周期的话，可以自行上网查阅相关资料，这里不再多做赘述。</p>
+<p>在面试过程中类加载过程虽然是一个老生常谈的问题，但是往往从这个问题还可以衍生出很多其他重要的知识点，已经罗列在下文中，如果大家感兴趣的话，可以自行学习，小编也会在之后的文章中，对其中的一些问题进行解答和总结。</p>
+<h3 id="相关扩展知识点："><a href="#相关扩展知识点：" class="headerlink" title="相关扩展知识点："></a>相关扩展知识点：</h3><ol>
+<li>Java虚拟机的基本机构？</li>
+<li>什么是类加载器？</li>
+<li>简单谈一下类加载的双亲委托机制？</li>
+<li>普通Java类的类加载过程和Tomcat的类加载过程是否一样？区别在哪？</li>
+<li>简单谈一下Java堆的垃圾回收机制？</li>
+</ol>
+]]></content>
+      <categories>
+        <category>笔记</category>
+      </categories>
+      <tags>
+        <tag>Java</tag>
+      </tags>
+  </entry>
+</search>
